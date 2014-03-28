@@ -1,5 +1,7 @@
 package ca.uwaterloo.ece.qhanam.slicer;
 
+import java.util.LinkedList;
+
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Assignment;
@@ -19,15 +21,21 @@ import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.IBinding;
 
 
-public class ExpressionVisitor extends ASTVisitor {
-	/**
-	 * Visit a generic ASTNode
-	 */
-	public boolean visit(ASTNode node){
-		System.out.println("ExpressionVisitor: " + node.getNodeType());
-		return true;
+public class AliasVisitor extends ASTVisitor {
+	
+	private int seedLine;		// The line number of the seed statement
+	private boolean backwards;	// Indicates we are constructing a backwards slice
+	private LinkedList<String> aliases;	// TODO: this isn't really a suitable structure for this...
+	
+	public AliasVisitor(int seedLine, boolean backwards){
+		super();
+		this.seedLine = seedLine;
+		this.backwards = backwards;
 	}
 	
+	/**
+	 * We need this for alias analysis.
+	 */
 	public boolean visit(Assignment node){
 		
 		if(node.getLeftHandSide().getNodeType() == ASTNode.SIMPLE_NAME){
@@ -61,6 +69,19 @@ public class ExpressionVisitor extends ASTVisitor {
 		return true;
 	}
 	
+	/**
+	 * We need this for data dependency slicing.
+	 */
+	public boolean visit(SimpleName node){
+		/* All we really need from this is the variable binding. */
+		IBinding binding = node.resolveBinding();
+		
+		/* Make sure this is a variable. */
+		if(binding instanceof IVariableBinding) System.out.println("Variable binding: " + binding.getKey());
+		
+		return true;
+	}
+	
 //	public boolean visit(FieldAccess node){
 //		/* If we're here then we're using a field. Return the field's key. 
 //		 * We also need to know if one variable is being assigned to another 
@@ -75,12 +96,5 @@ public class ExpressionVisitor extends ASTVisitor {
 //		return true;
 //	}
 //	
-//	public boolean visit(SimpleName node){
-//		
-//		/* If this is the child of a method call, don't consider it... maybe if we can get the return type?.
-//		 * We can only do so much since we are doing an intra-procedural analysis. */
-//		System.out.println("SimpleNameVisitorParent: " + node.getParent().toString());
-//		System.out.println("SimpleNameVisitor: " + node.getFullyQualifiedName() + " - " + node.getParent().getNodeType());
-//		return true;
-//	}
+
 }

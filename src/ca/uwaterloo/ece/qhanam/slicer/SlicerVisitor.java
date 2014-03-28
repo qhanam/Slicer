@@ -158,7 +158,7 @@ public class SlicerVisitor extends ASTVisitor
 	 */
 	public boolean visit(Assignment node){
 		System.out.println("Assignment Node");
-		node.accept(new ExpressionVisitor());
+		node.accept(new AliasVisitor());
 //		int line = Slicer.getLineNumber(node);
 //		if(line == this.seedLine){
 //			/* TODO: Add the line to the slice. */
