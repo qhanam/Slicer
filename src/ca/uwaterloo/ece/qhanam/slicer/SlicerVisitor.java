@@ -60,31 +60,6 @@ public class SlicerVisitor extends ASTVisitor
 		return this.aliases;
 	}
 	
-	/** 
-	 * Returns the children of the ASTNode. 
-	 */
-	private Object[] getChildren(ASTNode node) {
-	    List list = node.structuralPropertiesForType();
-	    for (int i= 0; i < list.size(); i++) {
-	        StructuralPropertyDescriptor curr= (StructuralPropertyDescriptor) list.get(i);
-	        Object child= node.getStructuralProperty(curr);
-	        System.out.println(child.toString());
-	        
-	        if (child instanceof List) {
-	        	System.out.println("LIST IN PROPERTY DESCRIPTOR");
-	        	List childList = (List) child;
-	        	for(Object o : childList){
-	        		if(o instanceof ChildListPropertyDescriptor) System.out.println("CHILD LIST PROPERTY DESCRIPTOR");
-	        	}
-                return ((List) child).toArray();
-	        } else if (child instanceof ASTNode) {
-	            return new Object[] { child };
-	        }
-	        return new Object[0];
-	    }
-	    return null;
-	}
-	
 	/**
 	 * Returns a list of variable names used in the ASTNode
 	 * @param node
@@ -122,17 +97,17 @@ public class SlicerVisitor extends ASTVisitor
 	private LinkedList<String> getSimpleNames(ASTNode node)
 	{
 		LinkedList<String> simpleNames = new LinkedList<String>();
-		Object[] children = this.getChildren(node);
+		//Object[] children = this.getChildren(node);
 		
-		for(int i = 0; i < children.length; i++){
-			if(children[i] instanceof ASTNode){
-				ASTNode child = (ASTNode) children[i];
-				if(child.getNodeType() == ASTNode.SIMPLE_NAME){
-					SimpleName simpleName = (SimpleName) child;
-					simpleNames.add(simpleName.getIdentifier());
-				}
-			}
-		}
+//		for(int i = 0; i < children.length; i++){
+//			if(children[i] instanceof ASTNode){
+//				ASTNode child = (ASTNode) children[i];
+//				if(child.getNodeType() == ASTNode.SIMPLE_NAME){
+//					SimpleName simpleName = (SimpleName) child;
+//					simpleNames.add(simpleName.getIdentifier());
+//				}
+//			}
+//		}
 		return simpleNames;
 	}
 	
@@ -183,91 +158,94 @@ public class SlicerVisitor extends ASTVisitor
 	 */
 	public boolean visit(Assignment node){
 		System.out.println("Assignment Node");
-		int line = Slicer.getLineNumber(node);
-		if(line == this.seedLine){
-			/* TODO: Add the line to the slice. */
-			this.addSeedStatement(node);
-		}
-		else if((this.backwards && line < this.seedLine) ||
-				(!this.backwards && line > this.seedLine)) {
-			/* TODO: Add the line to the slice if it contains
-			 * a variable that is an alias of a variable in the seed 
-			 * at this point in the AST. No matter if we are doing
-			 * a forwards or backwards analysis, we still look at
-			 * the forwards alias analysis for determining the list
-			 * of aliases. */
-			
-			this.checkStatement(node);
-		}
+		node.accept(new ExpressionVisitor());
+//		int line = Slicer.getLineNumber(node);
+//		if(line == this.seedLine){
+//			/* TODO: Add the line to the slice. */
+//			this.addSeedStatement(node);
+//		}
+//		else if((this.backwards && line < this.seedLine) ||
+//				(!this.backwards && line > this.seedLine)) {
+//			/* TODO: Add the line to the slice if it contains
+//			 * a variable that is an alias of a variable in the seed 
+//			 * at this point in the AST. No matter if we are doing
+//			 * a forwards or backwards analysis, we still look at
+//			 * the forwards alias analysis for determining the list
+//			 * of aliases. */
+//			
+//			this.checkStatement(node);
+//		}
 		return true;
 	}
 	
-	/**
-	 * Visit an initializer node.
-	 * eg. int i = 0;
-	 */
-	public boolean visit(Initializer node){
-		System.out.println("Initializer Node");
-		int line = Slicer.getLineNumber(node);
-		if(line == this.seedLine){
-			/* TODO: Add the line to the slice. */
-			this.addSeedStatement(node);
-		}
-		else if((this.backwards && line < this.seedLine) ||
-				(!this.backwards && line > this.seedLine)) {
-			/* TODO: Add the line to the slice if it contains
-			 * a variable that is an alias of a variable in the seed 
-			 * at this point in the AST. No matter if we are doing
-			 * a forwards or backwards analysis, we still look at
-			 * the forwards alias analysis for determining the list
-			 * of aliases. */
-			this.checkStatement(node);
-		}
-		return true;
-	}
-	
-	/**
-	 * Visit a variable declaration statement.
-	 */
-	public boolean visit(VariableDeclarationStatement node){
-		System.out.println("Variable Declaration Node");
-		int line = Slicer.getLineNumber(node);
-		if(line == this.seedLine){
-			/* TODO: Add the line to the slice. */
-			this.addSeedStatement(node);
-			
-			List<VariableDeclarationFragment> fragments = node.fragments();
-			for(VariableDeclarationFragment fragment : fragments){
-				/* TODO: If a tracked variable is on the right, add the variable on the left to the tracked list. */
-			}
-		}
-		else if((this.backwards && line < this.seedLine) ||
-				(!this.backwards && line > this.seedLine)) {
-			/* TODO: Add the line to the slice if it contains
-			 * a variable that is an alias of a variable in the seed 
-			 * at this point in the AST. No matter if we are doing
-			 * a forwards or backwards analysis, we still look at
-			 * the forwards alias analysis for determining the list
-			 * of aliases. */
-			this.checkStatement(node);
-			
-			List<VariableDeclarationFragment> fragments = node.fragments();
-			for(VariableDeclarationFragment fragment : fragments){
-				/* TODO: If a tracked variable is on the right, add the variable on the left to the tracked list. */
-			}
-		}
-		return true;
-	}
-	
-	public boolean visit(QualifiedName node){
-		//Slicer.printNode(node);
-		return true;
-	}
-	
-	public boolean visit(SimpleName node){
-		//Slicer.printNode(node);
-		return true;
-	}
+//	/**
+//	 * Visit an initializer node.
+//	 * eg. int i = 0;
+//	 */
+//	public boolean visit(Initializer node){
+//		System.out.println("Initializer Node");
+//		node.accept(new ExpressionVisitor());
+//		int line = Slicer.getLineNumber(node);
+//		if(line == this.seedLine){
+//			/* TODO: Add the line to the slice. */
+//			this.addSeedStatement(node);
+//		}
+//		else if((this.backwards && line < this.seedLine) ||
+//				(!this.backwards && line > this.seedLine)) {
+//			/* TODO: Add the line to the slice if it contains
+//			 * a variable that is an alias of a variable in the seed 
+//			 * at this point in the AST. No matter if we are doing
+//			 * a forwards or backwards analysis, we still look at
+//			 * the forwards alias analysis for determining the list
+//			 * of aliases. */
+//			this.checkStatement(node);
+//		}
+//		return true;
+//	}
+//	
+//	/**
+//	 * Visit a variable declaration statement.
+//	 */
+//	public boolean visit(VariableDeclarationStatement node){
+//		System.out.println("Variable Declaration Node");
+//		node.accept(new ExpressionVisitor());
+//		int line = Slicer.getLineNumber(node);
+//		if(line == this.seedLine){
+//			/* TODO: Add the line to the slice. */
+//			this.addSeedStatement(node);
+//			
+//			List<VariableDeclarationFragment> fragments = node.fragments();
+//			for(VariableDeclarationFragment fragment : fragments){
+//				/* TODO: If a tracked variable is on the right, add the variable on the left to the tracked list. */
+//			}
+//		}
+//		else if((this.backwards && line < this.seedLine) ||
+//				(!this.backwards && line > this.seedLine)) {
+//			/* TODO: Add the line to the slice if it contains
+//			 * a variable that is an alias of a variable in the seed 
+//			 * at this point in the AST. No matter if we are doing
+//			 * a forwards or backwards analysis, we still look at
+//			 * the forwards alias analysis for determining the list
+//			 * of aliases. */
+//			this.checkStatement(node);
+//			
+//			List<VariableDeclarationFragment> fragments = node.fragments();
+//			for(VariableDeclarationFragment fragment : fragments){
+//				/* TODO: If a tracked variable is on the right, add the variable on the left to the tracked list. */
+//			}
+//		}
+//		return true;
+//	}
+//	
+//	public boolean visit(QualifiedName node){
+//		//Slicer.printNode(node);
+//		return true;
+//	}
+//	
+//	public boolean visit(SimpleName node){
+//		//Slicer.printNode(node);
+//		return true;
+//	}
 	
 //	/**
 //	 * Visit a method declaration statement.

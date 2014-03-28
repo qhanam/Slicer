@@ -31,6 +31,9 @@ import ca.uwaterloo.ece.qhanam.alias.MayAliasAnalysis;;
 
 public class Slicer extends AbstractCrystalMethodAnalysis
 {
+	private static final int SEED_LINE = 406;
+	private static final String METHOD = "hashCode";
+	
 	FlowAnalysis<TupleLatticeElement<Variable, SingletonLatticeElement>> flowAnalysis;
 	
 	public Slicer() { }
@@ -43,7 +46,7 @@ public class Slicer extends AbstractCrystalMethodAnalysis
 	@Override
 	public void analyzeMethod(MethodDeclaration d) {
 		/* Check that we are analyzing the correct method. */
-		if(d.getName().toString().equals(/*"getFast"*/ "hashCode"))
+		if(d.getName().toString().equals(METHOD))
 		{
 			System.out.println("Analyzing "  + d.getName());
 			
@@ -58,7 +61,7 @@ public class Slicer extends AbstractCrystalMethodAnalysis
 			/* Do this iteratively until we reach a fixed point. */
 			for(int i = 0; i < 1; i++)
 			{
-				SlicerVisitor visitor = new SlicerVisitor(406, false);
+				SlicerVisitor visitor = new SlicerVisitor(SEED_LINE, false);
 				DDGTransferFunction tf = new DDGTransferFunction();
 				flowAnalysis = new FlowAnalysis<TupleLatticeElement<Variable, SingletonLatticeElement>>(tf);
 				d.accept(visitor);
