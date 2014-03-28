@@ -1,11 +1,14 @@
 package ca.uwaterloo.ece.qhanam.slicer;
 
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Assignment;
+import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.SimpleName;
@@ -14,6 +17,29 @@ import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.ChildListPropertyDescriptor;
+import org.eclipse.jdt.core.dom.Statement;
+import org.eclipse.jdt.core.dom.AssertStatement;
+import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.BreakStatement;
+import org.eclipse.jdt.core.dom.ConstructorInvocation;
+import org.eclipse.jdt.core.dom.ContinueStatement;
+import org.eclipse.jdt.core.dom.DoStatement;
+import org.eclipse.jdt.core.dom.EmptyStatement;
+import org.eclipse.jdt.core.dom.EnhancedForStatement;
+import org.eclipse.jdt.core.dom.ExpressionStatement;
+import org.eclipse.jdt.core.dom.ForStatement;
+import org.eclipse.jdt.core.dom.IfStatement;
+import org.eclipse.jdt.core.dom.LabeledStatement;
+import org.eclipse.jdt.core.dom.ReturnStatement;
+import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
+import org.eclipse.jdt.core.dom.SwitchCase;
+import org.eclipse.jdt.core.dom.SwitchStatement;
+import org.eclipse.jdt.core.dom.SynchronizedStatement;
+import org.eclipse.jdt.core.dom.ThrowStatement;
+import org.eclipse.jdt.core.dom.TryStatement;
+import org.eclipse.jdt.core.dom.TypeDeclarationStatement;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.eclipse.jdt.core.dom.WhileStatement;
 
 /**
  * The visitor functions for each statement type go here.
@@ -33,15 +59,26 @@ import org.eclipse.jdt.core.dom.ChildListPropertyDescriptor;
 public class SlicerVisitor extends ASTVisitor
 {
 	private int seedLine;		// The line number of the seed statement
-	private boolean backwards;	// Indicates we are constructing a backwards slice
+	private Slicer.Direction direction;	// Indicates we are constructing a backwards slice
+	private LinkedList<String> seedVariables;
 	private LinkedList<ASTNode> statements;
-	private LinkedList<String> aliases;
+	private Hashtable<Integer, LinkedList<String>> aliases;
 	
-	public SlicerVisitor(int seedLine, boolean backwards){
+	/**
+	 * We get the seed line number, direction and list of aliases at each line as
+	 * input from the Slicer class. The Slicer should have already calculated
+	 * aliases in the forward direction for us.
+	 * @param seedLine
+	 * @param backwards
+	 * @param aliases
+	 */
+	public SlicerVisitor(int seedLine, Slicer.Direction direction, Hashtable<Integer, LinkedList<String>> aliases, LinkedList<String> seedVariables){
 		super();
 		this.seedLine = seedLine;
+		this.aliases = aliases;
 		this.statements = new LinkedList<ASTNode>();
-		this.aliases = new LinkedList<String>();
+		this.seedVariables = seedVariables;
+		this.direction = direction;
 	}
 	
 	/**
@@ -53,222 +90,61 @@ public class SlicerVisitor extends ASTVisitor
 	}
 	
 	/**
-	 * Returns the list of aliases 
-	 * @return
+	 * We need this for data dependency slicing.
+	 * 
+	 * TODO: We need to do the alias analysis beforehand in the forward direction.
 	 */
-	public LinkedList<String> getAliasList(){
-		return this.aliases;
-	}
-	
-	/**
-	 * Returns a list of variable names used in the ASTNode
-	 * @param node
-	 * @return
-	 */
-	private List<SimpleName> getVariableNames(ASTNode node){
-		List<SimpleName> names = new LinkedList<SimpleName>();
+	public boolean visitStatement(Statement node){
+		/* Add this statement if:
+		 * 	1. It is the seed statement.
+		 * 	2. It contains a variable that is an alias of a seed statement variable
+		 */
 		
-		switch(node.getNodeType()){
-			case ASTNode.ASSIGNMENT:
-				Assignment a = (Assignment) node;
-				// Need to get all nodes of type Name (QualifiedName and SimpleName)
-				break;
-			case ASTNode.VARIABLE_DECLARATION_STATEMENT:
-				VariableDeclarationStatement vds = (VariableDeclarationStatement) node;
-				List<VariableDeclarationFragment> fragments = vds.fragments();
-				
-				for(VariableDeclarationFragment fragment : fragments){
-					/* TODO: If a tracked variable is on the right, add the variable on the left to the tracked list. */
-					names.add(fragment.getName());	// Add the declared variable to the alias list. Still need to add the right side...
-				}
-				break;
-			default:
-				break;
+		/* Get the line number for the statement. */
+		int line = Slicer.getLineNumber(node);
+		
+		if(line == this.seedLine){
+			/* This is the seed statement. Add the statement to the slice. */
+			this.statements.add(node);
 		}
-		return null;
-	}
-	
-	/**
-	 * Traverses the children of the ASTNode and finds all the
-	 * names of children of type SIMPLE_NAME.
-	 * @param node
-	 * @return
-	 */
-	private LinkedList<String> getSimpleNames(ASTNode node)
-	{
-		LinkedList<String> simpleNames = new LinkedList<String>();
-		//Object[] children = this.getChildren(node);
-		
-//		for(int i = 0; i < children.length; i++){
-//			if(children[i] instanceof ASTNode){
-//				ASTNode child = (ASTNode) children[i];
-//				if(child.getNodeType() == ASTNode.SIMPLE_NAME){
-//					SimpleName simpleName = (SimpleName) child;
-//					simpleNames.add(simpleName.getIdentifier());
-//				}
-//			}
-//		}
-		return simpleNames;
-	}
-	
-	/**
-	 * Adds the statement to the slice if it contains an alias. Also
-	 * adds new aliases if necessary.
-	 * @param node
-	 */
-	private void checkStatement(ASTNode node){
-		List<String> simpleNames = this.getSimpleNames(node);
-		
-		/* Check the aliases against the names in this statement. */
-		for(String simpleName : simpleNames){
-			if(this.aliases.contains(simpleName)){
-				/* Add this statement to the statement list. */
-				this.statements.add(node);
-				
-				/* Add the SimpleNames to the alias list. */
-				for(String alias : simpleNames){
-					if(!this.aliases.contains(alias)){
-						this.aliases.add(alias);
-					}
+		else if(((this.direction == Slicer.Direction.FORWARDS & line > this.seedLine) || 
+				(this.direction == Slicer.Direction.BACKWARDS & line < this.seedLine) ||
+				(this.direction == Slicer.Direction.BOTH & line != this.seedLine))){
+			/* If this statement contains an alias, add it to the list. */
+			Integer start = new Integer(node.getStartPosition());
+
+			if(this.aliases.containsKey(start)){
+				for(String variable : this.aliases.get(start)){
+					if(this.seedVariables.contains(variable))
+						this.statements.add(node);
 				}
 			}
 		}
-	}
-	
-	/**
-	 * Adds the seed statement when first encountered. Initializes
-	 * the alias list.
-	 * @param node
-	 */
-	private void addSeedStatement(ASTNode node){
-		List<String> simpleNames = this.getSimpleNames(node);
 		
-		/* Add the seed statement to the statement list. */
-		this.statements.add(node);
-		
-		/* Add the aliases. */
-		for(String simpleName : simpleNames){
-			this.aliases.add(simpleName);
-		}
-	}
-	
-	/**
-	 * Visit an assignment node.
-	 * eg. name = "Billy";
-	 */
-	public boolean visit(Assignment node){
-		System.out.println("Assignment Node");
-		node.accept(new AliasVisitor());
-//		int line = Slicer.getLineNumber(node);
-//		if(line == this.seedLine){
-//			/* TODO: Add the line to the slice. */
-//			this.addSeedStatement(node);
-//		}
-//		else if((this.backwards && line < this.seedLine) ||
-//				(!this.backwards && line > this.seedLine)) {
-//			/* TODO: Add the line to the slice if it contains
-//			 * a variable that is an alias of a variable in the seed 
-//			 * at this point in the AST. No matter if we are doing
-//			 * a forwards or backwards analysis, we still look at
-//			 * the forwards alias analysis for determining the list
-//			 * of aliases. */
-//			
-//			this.checkStatement(node);
-//		}
 		return true;
 	}
 	
-//	/**
-//	 * Visit an initializer node.
-//	 * eg. int i = 0;
-//	 */
-//	public boolean visit(Initializer node){
-//		System.out.println("Initializer Node");
-//		node.accept(new ExpressionVisitor());
-//		int line = Slicer.getLineNumber(node);
-//		if(line == this.seedLine){
-//			/* TODO: Add the line to the slice. */
-//			this.addSeedStatement(node);
-//		}
-//		else if((this.backwards && line < this.seedLine) ||
-//				(!this.backwards && line > this.seedLine)) {
-//			/* TODO: Add the line to the slice if it contains
-//			 * a variable that is an alias of a variable in the seed 
-//			 * at this point in the AST. No matter if we are doing
-//			 * a forwards or backwards analysis, we still look at
-//			 * the forwards alias analysis for determining the list
-//			 * of aliases. */
-//			this.checkStatement(node);
-//		}
-//		return true;
-//	}
-//	
-//	/**
-//	 * Visit a variable declaration statement.
-//	 */
-//	public boolean visit(VariableDeclarationStatement node){
-//		System.out.println("Variable Declaration Node");
-//		node.accept(new ExpressionVisitor());
-//		int line = Slicer.getLineNumber(node);
-//		if(line == this.seedLine){
-//			/* TODO: Add the line to the slice. */
-//			this.addSeedStatement(node);
-//			
-//			List<VariableDeclarationFragment> fragments = node.fragments();
-//			for(VariableDeclarationFragment fragment : fragments){
-//				/* TODO: If a tracked variable is on the right, add the variable on the left to the tracked list. */
-//			}
-//		}
-//		else if((this.backwards && line < this.seedLine) ||
-//				(!this.backwards && line > this.seedLine)) {
-//			/* TODO: Add the line to the slice if it contains
-//			 * a variable that is an alias of a variable in the seed 
-//			 * at this point in the AST. No matter if we are doing
-//			 * a forwards or backwards analysis, we still look at
-//			 * the forwards alias analysis for determining the list
-//			 * of aliases. */
-//			this.checkStatement(node);
-//			
-//			List<VariableDeclarationFragment> fragments = node.fragments();
-//			for(VariableDeclarationFragment fragment : fragments){
-//				/* TODO: If a tracked variable is on the right, add the variable on the left to the tracked list. */
-//			}
-//		}
-//		return true;
-//	}
-//	
-//	public boolean visit(QualifiedName node){
-//		//Slicer.printNode(node);
-//		return true;
-//	}
-//	
-//	public boolean visit(SimpleName node){
-//		//Slicer.printNode(node);
-//		return true;
-//	}
-	
-//	/**
-//	 * Visit a method declaration statement.
-//	 */
-//	public boolean visit(MethodDeclaration node){
-//		System.out.print(node);
-//		return true;
-//	}
-	
-//	/**
-//	 * Visit a variable declaration statement.
-//	 */
-//	public boolean visit(VariableDeclarationExpression node){
-//		System.out.println(node);
-//		return true;
-//	}
-	
-//	/**
-//	 * Visit a simple name statement.
-//	 */
-//	public boolean visit(SimpleName node){
-//		System.out.println(node);
-//		return true;
-//	}
-	
+	// TODO: This is annoying... but I can't think of a better way right now
+	public boolean visit(AssertStatement node){return this.visitStatement(node);}
+	public boolean visit(Block node){return this.visitStatement(node);}
+	public boolean visit(BreakStatement node){return this.visitStatement(node);}
+	public boolean visit(ConstructorInvocation node){return this.visitStatement(node);}
+	public boolean visit(ContinueStatement node){return this.visitStatement(node);}
+	public boolean visit(DoStatement node){return this.visitStatement(node);}
+	public boolean visit(EmptyStatement node){return this.visitStatement(node);}
+	public boolean visit(EnhancedForStatement node){return this.visitStatement(node);}
+	public boolean visit(ExpressionStatement node){return this.visitStatement(node);}
+	public boolean visit(ForStatement node){return this.visitStatement(node);}
+	public boolean visit(IfStatement node){return this.visitStatement(node);}
+	public boolean visit(LabeledStatement node){return this.visitStatement(node);}
+	public boolean visit(ReturnStatement node){return this.visitStatement(node);}
+	public boolean visit(SuperConstructorInvocation node){return this.visitStatement(node);}
+	public boolean visit(SwitchCase node){return this.visitStatement(node);}
+	public boolean visit(SwitchStatement node){return this.visitStatement(node);}
+	public boolean visit(SynchronizedStatement node){return this.visitStatement(node);}
+	public boolean visit(ThrowStatement node){return this.visitStatement(node);}
+	public boolean visit(TryStatement node){return this.visitStatement(node);}
+	public boolean visit(TypeDeclarationStatement node){return this.visitStatement(node);}
+	public boolean visit(VariableDeclarationStatement node){return this.visitStatement(node);}
+	public boolean visit(WhileStatement node){return this.visitStatement(node);}
 }

@@ -2,6 +2,7 @@ package ca.uwaterloo.ece.qhanam.slicer;
 
 import java.util.List;
 import java.util.LinkedList;
+import java.util.Hashtable;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -10,6 +11,7 @@ import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
@@ -31,8 +33,9 @@ import ca.uwaterloo.ece.qhanam.alias.MayAliasAnalysis;;
 
 public class Slicer extends AbstractCrystalMethodAnalysis
 {
-	private static final int SEED_LINE = 406;
+	private static final int SEED_LINE = 410;
 	private static final String METHOD = "hashCode";
+	private static final Direction DIRECTION = Direction.BACKWARDS;
 	
 	FlowAnalysis<TupleLatticeElement<Variable, SingletonLatticeElement>> flowAnalysis;
 	
@@ -49,32 +52,35 @@ public class Slicer extends AbstractCrystalMethodAnalysis
 		if(d.getName().toString().equals(METHOD))
 		{
 			System.out.println("Analyzing "  + d.getName());
+			Hashtable<Integer, LinkedList<String>> aliases = new Hashtable<Integer, LinkedList<String>>();
+			LinkedList<String> seedVariables = new LinkedList<String>();
 			
-			/* First we do the alias analysis. */
-			//MayAliasAnalysis aliasAnalysis = new MayAliasAnalysis(this.reporter, this.analysisInput);
-			//aliasAnalysis.analyzeMethod(d);
+			/* First we do the alias analysis. 
+			 * NOTE: 
+			 * 	This alias analysis has zero context sensitivity. We will improve it
+			 * 	in the future by using flow analysis.*/
 			
-			/* How do we find the seed statement? We need to fetch the line 
-			 * number somehow. Are the AST nodes associated with a line number?
-			 */
-			
-			/* Do this iteratively until we reach a fixed point. */
-			for(int i = 0; i < 1; i++)
-			{
-				SlicerVisitor visitor = new SlicerVisitor(SEED_LINE, false);
-				DDGTransferFunction tf = new DDGTransferFunction();
-				flowAnalysis = new FlowAnalysis<TupleLatticeElement<Variable, SingletonLatticeElement>>(tf);
-				d.accept(visitor);
-				
-				/* Fetch the slice statements. */
-				LinkedList<ASTNode> statements = visitor.getSliceStatements();
-				
-				/* Print slice statements. */
-				System.out.println("Nodes in slice:");
-				for(ASTNode node : statements){
-					Slicer.printNode(node);
-				}
+			/* This should populate the list with aliases. Iterate until we reach a fixed point. */
+			System.out.println("\nPerforming alias analysis...");
+			while(true){
+				AliasVisitor aliasVisitor = new AliasVisitor(SEED_LINE, DIRECTION, aliases, seedVariables);
+				d.accept(aliasVisitor);
+				break;
 			}
+			
+			System.out.println("\nCalculating slice...");
+			SlicerVisitor visitor = new SlicerVisitor(SEED_LINE, DIRECTION, aliases, seedVariables);
+			d.accept(visitor);
+			
+			/* Fetch the slice statements. */
+			LinkedList<ASTNode> statements = visitor.getSliceStatements();
+			
+			/* Print slice statements. */
+			System.out.println("\nNodes in slice:");
+			for(ASTNode node : statements){
+				System.out.print(Slicer.getLineNumber(node) + ": " + node.toString());
+			}
+
 			System.out.println("Finished Analysis");
 		}
 	}
@@ -97,6 +103,18 @@ public class Slicer extends AbstractCrystalMethodAnalysis
 			default:
 				System.out.println("Line " +  line + ": " + node.toString());
 		}
+	}
+	
+	/**
+	 * Finds the statement that contains the ASTNode. Useful
+	 * for finding the statement after we've found a variable.
+	 */
+	public static Statement getStatement(ASTNode statement){
+		/* Visit parents until we get to a statement. Add the statement to the list. */
+		while(!(statement instanceof Statement || statement == statement.getRoot())){
+			statement = statement.getParent();
+		}
+		return (Statement) statement;
 	}
 	
 	/**
@@ -127,5 +145,9 @@ public class Slicer extends AbstractCrystalMethodAnalysis
 			line = compUnit.getLineNumber(characterPosition);
 		}
 		return line;
+	}
+	
+	public enum Direction {
+	    BACKWARDS, FORWARDS, BOTH
 	}
 }
