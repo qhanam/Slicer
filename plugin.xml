@@ -4,9 +4,12 @@
    <extension
          point="edu.cmu.cs.crystal.CrystalAnalysis">
       <analysis
-            class="ca.uwaterloo.ece.qhanam.slicer.Slicer"
-            name="DepAnalysis">
+            class="ca.uwaterloo.ece.qhanam.slicer.DataSlicer"
+            name="DSlicer">
       </analysis>
-
+      <analysis
+            class="ca.uwaterloo.ece.qhanam.slicer.ControlSlicer"
+            name="CSlicer">
+      </analysis>
    </extension>
 </plugin>

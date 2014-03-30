@@ -46,11 +46,11 @@ import org.eclipse.jdt.core.dom.WhileStatement;
 public class AliasVisitor extends ASTVisitor {
 	
 	private int seedLine;		// The line number of the seed statement
-	private Slicer.Direction direction;	// Indicates we are constructing a backwards slice
+	private DataSlicer.Direction direction;	// Indicates we are constructing a backwards slice
 	private Hashtable<Integer,LinkedList<String>> aliases;	// TODO: this isn't really a suitable structure for this...
 	private LinkedList<String> seedVariables;
 	
-	public AliasVisitor(int seedLine, Slicer.Direction direction, Hashtable<Integer,LinkedList<String>> aliases, LinkedList<String> seedVariables){
+	public AliasVisitor(int seedLine, DataSlicer.Direction direction, Hashtable<Integer,LinkedList<String>> aliases, LinkedList<String> seedVariables){
 		super();
 		this.seedLine = seedLine;
 		this.direction = direction;
@@ -65,7 +65,7 @@ public class AliasVisitor extends ASTVisitor {
 	 * TODO: We need to also include other statements... like variable decalaration. What else?
 	 */
 	public boolean visit(Assignment node){
-		ASTNode statement = Slicer.getStatement(node);
+		ASTNode statement = DataSlicer.getStatement(node);
 		
 		if(node.getLeftHandSide().getNodeType() == ASTNode.SIMPLE_NAME){
 			/* Local variable being assigned. */
@@ -111,7 +111,7 @@ public class AliasVisitor extends ASTVisitor {
 			LinkedList<String> variables;
 			
 			/* Get the statement. */
-			Statement statement = Slicer.getStatement(node);
+			Statement statement = DataSlicer.getStatement(node);
 			
 			if(this.aliases.containsKey(statement)){
 				variables = this.aliases.get(statement);
@@ -131,7 +131,7 @@ public class AliasVisitor extends ASTVisitor {
 	 */
 	public boolean visitStatement(Statement node){
 		/* Get the line number for the statement. */
-		int line = Slicer.getLineNumber(node);
+		int line = DataSlicer.getLineNumber(node);
 		
 		if(line == this.seedLine){
 			/* We need to keep track of the variables in the seed statement. */

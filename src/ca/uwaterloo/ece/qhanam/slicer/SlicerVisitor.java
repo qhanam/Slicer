@@ -59,7 +59,7 @@ import org.eclipse.jdt.core.dom.WhileStatement;
 public class SlicerVisitor extends ASTVisitor
 {
 	private int seedLine;		// The line number of the seed statement
-	private Slicer.Direction direction;	// Indicates we are constructing a backwards slice
+	private DataSlicer.Direction direction;	// Indicates we are constructing a backwards slice
 	private LinkedList<String> seedVariables;
 	private LinkedList<ASTNode> statements;
 	private Hashtable<Integer, LinkedList<String>> aliases;
@@ -72,7 +72,7 @@ public class SlicerVisitor extends ASTVisitor
 	 * @param backwards
 	 * @param aliases
 	 */
-	public SlicerVisitor(int seedLine, Slicer.Direction direction, Hashtable<Integer, LinkedList<String>> aliases, LinkedList<String> seedVariables){
+	public SlicerVisitor(int seedLine, DataSlicer.Direction direction, Hashtable<Integer, LinkedList<String>> aliases, LinkedList<String> seedVariables){
 		super();
 		this.seedLine = seedLine;
 		this.aliases = aliases;
@@ -101,15 +101,15 @@ public class SlicerVisitor extends ASTVisitor
 		 */
 		
 		/* Get the line number for the statement. */
-		int line = Slicer.getLineNumber(node);
+		int line = DataSlicer.getLineNumber(node);
 		
 		if(line == this.seedLine){
 			/* This is the seed statement. Add the statement to the slice. */
 			this.statements.add(node);
 		}
-		else if(((this.direction == Slicer.Direction.FORWARDS & line > this.seedLine) || 
-				(this.direction == Slicer.Direction.BACKWARDS & line < this.seedLine) ||
-				(this.direction == Slicer.Direction.BOTH & line != this.seedLine))){
+		else if(((this.direction == DataSlicer.Direction.FORWARDS & line > this.seedLine) || 
+				(this.direction == DataSlicer.Direction.BACKWARDS & line < this.seedLine) ||
+				(this.direction == DataSlicer.Direction.BOTH & line != this.seedLine))){
 			/* If this statement contains an alias, add it to the list. */
 			Integer start = new Integer(node.getStartPosition());
 
