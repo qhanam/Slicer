@@ -4,10 +4,13 @@ import java.util.List;
 import java.util.LinkedList;
 import java.util.Hashtable;
 import java.util.Queue;
+import java.util.Stack;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.HashSet;
+
+//import att.grappa.Graph;
 
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -40,7 +43,7 @@ import edu.cmu.cs.crystal.cfg.ICFGEdge;
 
 public class ControlSlicer extends AbstractCrystalMethodAnalysis
 {
-	private static final int SEED_LINE = 410;
+	private static final int SEED_LINE = 406;
 	private static final String METHOD = "hashCode";
 	private static final Direction DIRECTION = Direction.FORWARDS;
 	
@@ -58,7 +61,7 @@ public class ControlSlicer extends AbstractCrystalMethodAnalysis
 	@Override
 	public void analyzeMethod(MethodDeclaration d) {
 		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
-		Queue<ICFGNode<ASTNode>> queue = new LinkedList<ICFGNode<ASTNode>>();
+		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
 		
 		/* Check that we are analyzing the correct method. */
 		if(d.getName().toString().equals(METHOD))
@@ -69,6 +72,8 @@ public class ControlSlicer extends AbstractCrystalMethodAnalysis
 			 * -> Use the CFG
 			 */
 			EclipseCFG cfg = new EclipseCFG(d);
+			
+			//cfg.getDotGraph()
 			
 			/* Once we have the start node, we can traverse the graph by finding
 			 * the output edges and traversing them. For backwards slicing, we
@@ -84,33 +89,46 @@ public class ControlSlicer extends AbstractCrystalMethodAnalysis
 			 * need some way to label the seed path and log the ASTNodes. What if
 			 * we first do a search for the seed node? Then we can use it as a
 			 * starting point.
+			 * 
+			 * We do a depth-first search so we can see the proper order.
 			 */
-			queue.add(cfgNode);
+			stack.add(cfgNode);
 			int line = -1;
-			while(queue.peek() != null){
-				cfgNode = queue.remove();
+			while(!stack.empty()){
+				cfgNode = stack.pop();
 				ASTNode astNode = (ASTNode) cfgNode.getASTNode();
-				if(ControlSlicer.getStatement(astNode) == null) continue;
-				line = ControlSlicer.getLineNumber(ControlSlicer.getStatement(astNode));
-				System.out.println("Line " + line + " in the CFG.");
-				if(line == this.SEED_LINE) break;
+				
+				/* Check if this is the seed statement. */
+				if(ControlSlicer.getStatement(astNode) != null){	
+					line = ControlSlicer.getLineNumber(ControlSlicer.getStatement(astNode));
+					System.out.println("Line " + line + " in the CFG: " + cfgNode.toString());
+					if(line == this.SEED_LINE) break;
+				}
+				
 				Set<ICFGEdge<ASTNode>> neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
-				for(ICFGEdge<ASTNode> edge : neighbours){						
-					queue.add(edge.getSink());
+				for(ICFGEdge<ASTNode> edge : neighbours){	
+					if(!visited.contains(edge.getSink())){
+						stack.push(edge.getSink());
+						visited.add(edge.getSink());
+					}
 				}
 			}
 			
 			/* Check that we actually found a seed statement. */
-			if(cfgNode == null) return;
+			if(cfgNode == null || line != this.SEED_LINE){
+				System.out.println("Seed statement not found.");
+				return;
+			}
 			
 			/* Build the control dependency slice. */
-			queue.clear();
-			queue.add(cfgNode);
+			visited.clear();
+			stack.clear();
+			stack.add(cfgNode);
 			/* Breadth first search. Add each statement to the list when found. */
-			while(queue.peek() != null){
-				cfgNode = queue.remove();
+			while(!stack.empty()){
+				cfgNode = stack.pop();
 				ASTNode astNode = (ASTNode) cfgNode.getASTNode();
-				if(getStatement(astNode) != null) this.statements.add(ControlSlicer.getStatement(astNode));
+				if(getStatement(astNode) != null && !this.statements.contains(ControlSlicer.getStatement(astNode))) this.statements.add(ControlSlicer.getStatement(astNode));
 				Set<ICFGEdge<ASTNode>> neighbours;
 				
 				if(this.DIRECTION == ControlSlicer.Direction.FORWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
@@ -119,13 +137,11 @@ public class ControlSlicer extends AbstractCrystalMethodAnalysis
 				
 				for(ICFGEdge<ASTNode> edge : neighbours){
 					if(this.DIRECTION == ControlSlicer.Direction.FORWARDS && !visited.contains(edge.getSink())){
-						if(ControlSlicer.getStatement(edge.getSink().getASTNode()) == null) continue;
-						queue.add(edge.getSink());
+						stack.push(edge.getSink());
 						visited.add(edge.getSink());
 					}
 					else if(this.DIRECTION == ControlSlicer.Direction.BACKWARDS && !visited.contains(edge.getSource())){
-						if(ControlSlicer.getStatement(edge.getSource().getASTNode()) == null) continue;
-						queue.add(edge.getSource());
+						stack.push(edge.getSource());
 						visited.add(edge.getSource());
 					}
 				}
