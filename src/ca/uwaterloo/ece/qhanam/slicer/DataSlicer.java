@@ -32,59 +32,38 @@ import edu.cmu.cs.crystal.flow.SingletonLatticeElement;
 import edu.cmu.cs.crystal.cfg.eclipse.EclipseCFG;
 
 
-public class DataSlicer extends AbstractCrystalMethodAnalysis
+public class DataSlicer
 {
-	private static final int SEED_LINE = 410;
-	private static final String METHOD = "hashCode";
-	private static final Direction DIRECTION = Direction.BACKWARDS;
-	
+	private Direction direction;
 	FlowAnalysis<TupleLatticeElement<Variable, SingletonLatticeElement>> flowAnalysis;
 	
-	public DataSlicer() { }
-	
-	@Override
-	public String getName() {
-		return "DSlicer";
+	public DataSlicer(Direction direction) { 
+		this.direction = direction;
 	}
 	
-	@Override
-	public void analyzeMethod(MethodDeclaration d) {
-		/* Check that we are analyzing the correct method. */
-		if(d.getName().toString().equals(METHOD))
-		{
-			System.out.println("Analyzing "  + d.getName());
-			
-			Hashtable<Integer, LinkedList<String>> aliases = new Hashtable<Integer, LinkedList<String>>();
-			LinkedList<String> seedVariables = new LinkedList<String>();
-			
-			/* First we do the alias analysis. 
-			 * NOTE: 
-			 * 	This alias analysis has zero context sensitivity. We will improve it
-			 * 	in the future by using flow analysis.*/
-			
-			/* This should populate the list with aliases. Iterate until we reach a fixed point. */
-			System.out.println("\nPerforming alias analysis...");
-			while(true){
-				AliasVisitor aliasVisitor = new AliasVisitor(SEED_LINE, DIRECTION, aliases, seedVariables);
-				d.accept(aliasVisitor);
-				break;
-			}
-			
-			System.out.println("\nCalculating slice...");
-			SlicerVisitor visitor = new SlicerVisitor(SEED_LINE, DIRECTION, aliases, seedVariables);
-			d.accept(visitor);
-			
-			/* Fetch the slice statements. */
-			LinkedList<ASTNode> statements = visitor.getSliceStatements();
-			
-			/* Print slice statements. */
-			System.out.println("\nNodes in slice:");
-			for(ASTNode node : statements){
-				System.out.print(DataSlicer.getLineNumber(node) + ": " + node.toString());
-			}
-
-			System.out.println("Finished Analysis");
+	public List<Statement> sliceMethod(MethodDeclaration d, int seedLine) {
+		Hashtable<Integer, LinkedList<String>> aliases = new Hashtable<Integer, LinkedList<String>>();
+		LinkedList<String> seedVariables = new LinkedList<String>();
+		
+		/* First we do the alias analysis. 
+		 * NOTE: 
+		 * 	This alias analysis has zero context sensitivity. We will improve it
+		 * 	in the future by using flow analysis.*/
+		
+		/* This should populate the list with aliases. Iterate until we reach a fixed point. */
+		while(true){
+			AliasVisitor aliasVisitor = new AliasVisitor(seedLine, direction, aliases, seedVariables);
+			d.accept(aliasVisitor);
+			break;
 		}
+		
+		SlicerVisitor visitor = new SlicerVisitor(seedLine, direction, aliases, seedVariables);
+		d.accept(visitor);
+		
+		/* Fetch the slice statements. */
+		LinkedList<Statement> statements = visitor.getSliceStatements();
+		
+		return statements;
 	}
 	
 	/**

@@ -71,30 +71,30 @@ public class AliasVisitor extends ASTVisitor {
 			/* Local variable being assigned. */
 			SimpleName localVar = (SimpleName) node.getLeftHandSide();
 			IBinding binding = localVar.resolveBinding();
-			System.out.println("Assigning local variable " + binding.getKey());
+			//System.out.println("Assigning local variable " + binding.getKey());
 		}
 		else if(node.getLeftHandSide().getNodeType() == ASTNode.FIELD_ACCESS){
 			/* Field being assigned. */
 			FieldAccess fieldVar = (FieldAccess) node.getLeftHandSide();
 			IVariableBinding binding = fieldVar.resolveFieldBinding();
-			System.out.println("Assigning field: " + binding.getKey());
+			//System.out.println("Assigning field: " + binding.getKey());
 		}
 		
 		if(node.getRightHandSide().getNodeType() == ASTNode.SIMPLE_NAME){
 			/* Local variable being read. */
 			SimpleName localVar = (SimpleName) node.getLeftHandSide();
 			IBinding binding = localVar.resolveBinding();
-			System.out.println("Assigning local variable " + binding.getKey());
+			//System.out.println("Assigning local variable " + binding.getKey());
 		}
 		else if(node.getRightHandSide().getNodeType() == ASTNode.METHOD_INVOCATION){
 			/* Method return value being read (ie. we don't know what's being returned). */
 			MethodInvocation methodInv = (MethodInvocation) node.getRightHandSide();
 			IMethodBinding binding = methodInv.resolveMethodBinding();
-			System.out.println("Reading method invocation " + binding.getKey());
+			//System.out.println("Reading method invocation " + binding.getKey());
 		}
 		
-		System.out.println("Left hand expression: " + node.getLeftHandSide().toString());
-		System.out.println("Right hand expression: " + node.getRightHandSide().toString());
+		//System.out.println("Left hand expression: " + node.getLeftHandSide().toString());
+		//System.out.println("Right hand expression: " + node.getRightHandSide().toString());
 		return true;
 	}
 	

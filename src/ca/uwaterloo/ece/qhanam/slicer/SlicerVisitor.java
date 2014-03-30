@@ -61,7 +61,7 @@ public class SlicerVisitor extends ASTVisitor
 	private int seedLine;		// The line number of the seed statement
 	private DataSlicer.Direction direction;	// Indicates we are constructing a backwards slice
 	private LinkedList<String> seedVariables;
-	private LinkedList<ASTNode> statements;
+	private LinkedList<Statement> statements;
 	private Hashtable<Integer, LinkedList<String>> aliases;
 	
 	/**
@@ -76,7 +76,7 @@ public class SlicerVisitor extends ASTVisitor
 		super();
 		this.seedLine = seedLine;
 		this.aliases = aliases;
-		this.statements = new LinkedList<ASTNode>();
+		this.statements = new LinkedList<Statement>();
 		this.seedVariables = seedVariables;
 		this.direction = direction;
 	}
@@ -85,7 +85,7 @@ public class SlicerVisitor extends ASTVisitor
 	 * Returns the list of statements in the slice.
 	 * @return
 	 */
-	public LinkedList<ASTNode> getSliceStatements(){
+	public LinkedList<Statement> getSliceStatements(){
 		return this.statements;
 	}
 	
