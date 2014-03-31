@@ -49,6 +49,7 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 	private static final int SEED_LINE = 406;
 	private static final String METHOD = "hashCode";
 	private static final ControlSlicer.Direction DIRECTION = ControlSlicer.Direction.FORWARDS;
+	private static final ControlSlicer.Type TYPE = ControlSlicer.Type.DATA;
 	
 	public CSlicer() { }
 	
@@ -64,7 +65,7 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 			System.out.println("Starting Control Analysis");
 			System.out.flush();
 			
-			ControlSlicer slicer = new ControlSlicer(DIRECTION);
+			ControlSlicer slicer = new ControlSlicer(DIRECTION, TYPE);
 			List<Statement> statements = slicer.sliceMethod(d, SEED_LINE);
 		
 			/* Print slice statements. */

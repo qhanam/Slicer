@@ -43,70 +43,47 @@ import edu.cmu.cs.crystal.cfg.ICFGEdge;
 
 public class ControlSlicer
 {
+	private Type type;
 	private Direction direction;
 	private LinkedList<Statement> statements;
 	
-	public ControlSlicer(Direction direction) { 
+	/**
+	 * Creates a slicer instance.
+	 * @param direction FORWARDS, BACKWARDS or BOTH
+	 * @param type The type of dependencies to track (CONTROL or DATA). Data dependencies subsume control dependencies.
+	 */
+	public ControlSlicer(Direction direction, Type type) { 
 		this.statements = new LinkedList<Statement>();
 		this.direction = direction;
+		this.type = type;
 	}
 
+	/**
+	 * Slices the method on data and/or control dependencies.
+	 * @param d The method to slice.
+	 * @param seedLine The line number of the seed statement.
+	 * @return
+	 */
 	public List<Statement> sliceMethod(MethodDeclaration d, int seedLine) {
 		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
 		Hashtable<Integer,Statement> statementPairs = new Hashtable<Integer,Statement>();
 		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
+		LinkedList<String> seedVariables = null;
 		
-		/* What if we are doing a control dependency analysis? 
-		 * -> Use the CFG
-		 */
+		/* Build the CFG from the method declaration. */
 		EclipseCFG cfg = new EclipseCFG(d);
 		
-		//cfg.getDotGraph()
-		
 		/* Once we have the start node, we can traverse the graph by finding
-		 * the output edges and traversing them. For backwards slicing, we
-		 * start at the end node, find the input edges and traverse them.
-		 * 
-		 * Actually, we don't need to go backwards if we're just searching
-		 * for the seed statement... right?
-		 */
+		 * the output edges and traversing them. */
 		ICFGNode<ASTNode> cfgNode = null;
 		cfgNode = cfg.getStartNode();
 		
-		/* So now we need to traverse the graph to find the seed statement. We
-		 * need some way to label the seed path and log the ASTNodes. What if
-		 * we first do a search for the seed node? Then we can use it as a
-		 * starting point.
-		 * 
-		 * We do a depth-first search so we can see the proper order.
-		 */
-		stack.add(cfgNode);
-		int line = -1;
-		while(!stack.empty()){
-			cfgNode = stack.pop();
-			ASTNode astNode = (ASTNode) cfgNode.getASTNode();
-			
-			/* Check if this is the seed statement. */
-			if(ControlSlicer.getStatement(astNode) != null){	
-				line = ControlSlicer.getLineNumber(ControlSlicer.getStatement(astNode));
-				//System.out.println("Line " + line + " in the CFG: " + cfgNode.toString());
-				if(line == seedLine) break;
-			}
-			
-			Set<ICFGEdge<ASTNode>> neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
-			for(ICFGEdge<ASTNode> edge : neighbours){	
-				if(!visited.contains(edge.getSink())){
-					stack.push(edge.getSink());
-					visited.add(edge.getSink());
-				}
-			}
-		}
+		/* Find the seed node in the CFG. */
+		cfgNode = ControlSlicer.findSeed(cfgNode, seedLine);
+		if(cfgNode == null) return null;
 		
-		/* Check that we actually found a seed statement. */
-		if(cfgNode == null || line != seedLine){
-			System.out.println("Seed statement not found.");
-			return null;
-		}
+		/* Get the list of variables in the seed node. */
+		if(this.type == ControlSlicer.Type.DATA) seedVariables = ControlSlicer.getSeedVariables(cfgNode);
 		
 		/* Build the control dependency slice. */
 		visited.clear();
@@ -120,9 +97,25 @@ public class ControlSlicer
 			ASTNode astNode = (ASTNode) cfgNode.getASTNode();
 			Statement statement = getStatement(astNode);
 			
-			/* Add the statement to the slice if it isn't in yet. */
+			/* Add the statement to the slice if:
+			 * 	1. It isn't in yet.
+			 * 	2. We are doing a data dependency analysis and the statement contains a seed variable. */
 			if(statement != null && !statementPairs.containsKey(new Integer(statement.getStartPosition()))) 
-				statementPairs.put(new Integer(statement.getStartPosition()), statement);
+			{
+				if(this.type == ControlSlicer.Type.CONTROL){
+					statementPairs.put(new Integer(statement.getStartPosition()), statement);
+				}
+				else if(this.type == ControlSlicer.Type.DATA){
+					/* TODO: Check if this statement contains a seed variable.
+					 * 	We do the more general case first... later we will only check
+					 * if this is an assignment where the left hand side is a seed
+					 * variable from the right hand side.
+					 */
+					DataDependencyVisitor ddv = new DataDependencyVisitor(seedVariables);
+					statement.accept(ddv);
+					if(ddv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
+				}
+			}
 			
 			if(this.direction == ControlSlicer.Direction.FORWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
 			else if(this.direction == ControlSlicer.Direction.BACKWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getInputs();
@@ -146,6 +139,69 @@ public class ControlSlicer
 		}
 
 		return this.statements;
+	}
+	
+	/**
+	 * Returns a list of variables associated with the seed statement.
+	 * 
+	 * TODO: We're only interested in the variables on the right hand
+	 * side of an assignment expression...
+	 * 
+	 * @param cfgNode
+	 * @return
+	 */
+	public static LinkedList<String> getSeedVariables(ICFGNode<ASTNode> cfgNode){
+		LinkedList<String> seedVariables = new LinkedList<String>();
+		
+		/* Extract the variables from the seed statement. */
+		Statement statement = ControlSlicer.getStatement(cfgNode.getASTNode());
+		SeedVisitor seedVisitor = new SeedVisitor(seedVariables);
+		statement.accept(seedVisitor);
+		
+		return seedVariables;
+	}
+	
+	/** 
+	 * Do a DFS on the CFG for the seed node. The resulting CFGNode
+	 * is the starting point for our slice.
+	 * 
+	 * We do a depth-first search so we can see the proper CFGNode 
+	 * order when debugging.
+	 */
+	public static ICFGNode<ASTNode> findSeed(ICFGNode<ASTNode> cfgNode, int seedLine){
+		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
+		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
+		
+		stack.add(cfgNode);
+		int line = -1;
+		while(!stack.empty()){
+			cfgNode = stack.pop();
+			ASTNode astNode = (ASTNode) cfgNode.getASTNode();
+			
+			/* Check if this is the seed statement. */
+			Statement statement = ControlSlicer.getStatement(astNode);
+			if(statement != null){
+				line = ControlSlicer.getLineNumber(statement);
+				if(line == seedLine) break;
+			}
+			
+			/* Visit all the neighbors that haven't been visited (for DFS). */
+			Set<ICFGEdge<ASTNode>> neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
+			for(ICFGEdge<ASTNode> edge : neighbours){	
+				if(!visited.contains(edge.getSink())){
+					stack.push(edge.getSink());
+					visited.add(edge.getSink());
+				}
+			}
+		}
+		
+		/* Check that we actually found a seed statement. */
+		if(cfgNode == null || line != seedLine){
+			System.out.println("Seed statement not found.");
+			return null;
+		}
+		
+		return cfgNode;
 	}
 	
 	/**
@@ -183,7 +239,7 @@ public class ControlSlicer
 	}
 	
 	/**
-	 * Finds the compilation unit and retrives the line number
+	 * Finds the compilation unit and retrieves the line number
 	 * of the given node.
 	 * @param node
 	 * @return
@@ -214,5 +270,9 @@ public class ControlSlicer
 	
 	public enum Direction {
 	    BACKWARDS, FORWARDS, BOTH
+	}
+	
+	public enum Type{
+		CONTROL, DATA
 	}
 }
