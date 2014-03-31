@@ -10,8 +10,6 @@ import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.HashSet;
 
-//import att.grappa.Graph;
-
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ASTVisitor;
@@ -28,8 +26,7 @@ import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
 
-import ca.uwaterloo.ece.qhanam.slicer.ControlSlicer;
-import ca.uwaterloo.ece.qhanam.slicer.DataSlicer;
+import ca.uwaterloo.ece.qhanam.slicer.Slicer;
 
 
 import edu.cmu.cs.crystal.AbstractCrystalMethodAnalysis;
@@ -48,8 +45,8 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 {
 	private static final int SEED_LINE = 406;
 	private static final String METHOD = "hashCode";
-	private static final ControlSlicer.Direction DIRECTION = ControlSlicer.Direction.FORWARDS;
-	private static final ControlSlicer.Type TYPE = ControlSlicer.Type.DATA;
+	private static final Slicer.Direction DIRECTION = Slicer.Direction.FORWARDS;
+	private static final Slicer.Type TYPE = Slicer.Type.DATA;
 	
 	public CSlicer() { }
 	
@@ -65,13 +62,13 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 			System.out.println("Starting Control Analysis");
 			System.out.flush();
 			
-			ControlSlicer slicer = new ControlSlicer(DIRECTION, TYPE);
+			Slicer slicer = new Slicer(DIRECTION, TYPE);
 			List<Statement> statements = slicer.sliceMethod(d, SEED_LINE);
 		
 			/* Print slice statements. */
 			System.out.println("\nNodes in slice:");
 			for(ASTNode node : statements){
-				System.out.print(DataSlicer.getLineNumber(node) + ": " + node.toString());
+				System.out.print(Slicer.getLineNumber(node) + ": " + node.toString());
 			}
 			
 			System.out.println("Finished Control Analysis");	

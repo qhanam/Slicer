@@ -41,18 +41,18 @@ import edu.cmu.cs.crystal.cfg.eclipse.EclipseCFG;
 import edu.cmu.cs.crystal.cfg.ICFGNode;
 import edu.cmu.cs.crystal.cfg.ICFGEdge;
 
-public class ControlSlicer
+public class Slicer
 {
 	private Type type;
 	private Direction direction;
 	private LinkedList<Statement> statements;
 	
 	/**
-	 * Creates a slicer instance.
+	 * Creates a slicer instance. See ca.uwaterloo.ece.qhanam.slicer.plugin.CSlicer for sample usage.
 	 * @param direction FORWARDS, BACKWARDS or BOTH
 	 * @param type The type of dependencies to track (CONTROL or DATA). Data dependencies subsume control dependencies.
 	 */
-	public ControlSlicer(Direction direction, Type type) { 
+	public Slicer(Direction direction, Type type) { 
 		this.statements = new LinkedList<Statement>();
 		this.direction = direction;
 		this.type = type;
@@ -79,11 +79,11 @@ public class ControlSlicer
 		cfgNode = cfg.getStartNode();
 		
 		/* Find the seed node in the CFG. */
-		cfgNode = ControlSlicer.findSeed(cfgNode, seedLine);
+		cfgNode = Slicer.findSeed(cfgNode, seedLine);
 		if(cfgNode == null) return null;
 		
 		/* Get the list of variables in the seed node. */
-		if(this.type == ControlSlicer.Type.DATA) seedVariables = ControlSlicer.getSeedVariables(cfgNode);
+		if(this.type == Slicer.Type.DATA) seedVariables = Slicer.getSeedVariables(cfgNode);
 		
 		/* Build the control dependency slice. */
 		visited.clear();
@@ -102,10 +102,10 @@ public class ControlSlicer
 			 * 	2. We are doing a data dependency analysis and the statement contains a seed variable. */
 			if(statement != null && !statementPairs.containsKey(new Integer(statement.getStartPosition()))) 
 			{
-				if(this.type == ControlSlicer.Type.CONTROL){
+				if(this.type == Slicer.Type.CONTROL){
 					statementPairs.put(new Integer(statement.getStartPosition()), statement);
 				}
-				else if(this.type == ControlSlicer.Type.DATA){
+				else if(this.type == Slicer.Type.DATA){
 					/* TODO: Check if this statement contains a seed variable.
 					 * 	We do the more general case first... later we will only check
 					 * if this is an assignment where the left hand side is a seed
@@ -117,16 +117,16 @@ public class ControlSlicer
 				}
 			}
 			
-			if(this.direction == ControlSlicer.Direction.FORWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
-			else if(this.direction == ControlSlicer.Direction.BACKWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getInputs();
+			if(this.direction == Slicer.Direction.FORWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
+			else if(this.direction == Slicer.Direction.BACKWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getInputs();
 			else return null;
 			
 			for(ICFGEdge<ASTNode> edge : neighbours){
-				if(this.direction == ControlSlicer.Direction.FORWARDS && !visited.contains(edge.getSink())){
+				if(this.direction == Slicer.Direction.FORWARDS && !visited.contains(edge.getSink())){
 					stack.push(edge.getSink());
 					visited.add(edge.getSink());
 				}
-				else if(this.direction == ControlSlicer.Direction.BACKWARDS && !visited.contains(edge.getSource())){
+				else if(this.direction == Slicer.Direction.BACKWARDS && !visited.contains(edge.getSource())){
 					stack.push(edge.getSource());
 					visited.add(edge.getSource());
 				}
@@ -154,7 +154,7 @@ public class ControlSlicer
 		LinkedList<String> seedVariables = new LinkedList<String>();
 		
 		/* Extract the variables from the seed statement. */
-		Statement statement = ControlSlicer.getStatement(cfgNode.getASTNode());
+		Statement statement = Slicer.getStatement(cfgNode.getASTNode());
 		SeedVisitor seedVisitor = new SeedVisitor(seedVariables);
 		statement.accept(seedVisitor);
 		
@@ -179,9 +179,9 @@ public class ControlSlicer
 			ASTNode astNode = (ASTNode) cfgNode.getASTNode();
 			
 			/* Check if this is the seed statement. */
-			Statement statement = ControlSlicer.getStatement(astNode);
+			Statement statement = Slicer.getStatement(astNode);
 			if(statement != null){
-				line = ControlSlicer.getLineNumber(statement);
+				line = Slicer.getLineNumber(statement);
 				if(line == seedLine) break;
 			}
 			
@@ -208,7 +208,7 @@ public class ControlSlicer
 	 * Prints an ASTNode according to it's type.
 	 */
 	public static void printNode(ASTNode node){
-		int line = ControlSlicer.getLineNumber(node);
+		int line = Slicer.getLineNumber(node);
 		
 		switch(node.getNodeType()){
 			case ASTNode.VARIABLE_DECLARATION_STATEMENT:
