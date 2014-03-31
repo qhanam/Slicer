@@ -1,12 +1,7 @@
-org/
 bin/
 error.output
 .DS_Store
-.project
-.classpath
-.settings
 *.log
 *.bbl
 *.blg
 *.eps
-.DS_Store
