@@ -6,6 +6,7 @@ import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.MethodInvocation;
 
 /**
  * Add any variables or fields that appear in the seed statement
@@ -32,9 +33,19 @@ public class SeedVisitor extends ASTVisitor {
 		/* All we really need from this is the variable binding. */
 		IBinding binding = node.resolveBinding();
 		
-		/* Make sure this is a variable. */
-		if(binding instanceof IVariableBinding){
-			seedVariables.add(binding.getKey());
+		/* Make sure this is a variable.
+		 * If we are just analyzing one source file,
+		 * we won't have binding info... so do our 
+		 * best effort at matching variables. */
+		if(binding == null){
+			if(!(node.getParent() instanceof MethodInvocation)){
+				if(!seedVariables.contains(node.getFullyQualifiedName()))
+					seedVariables.add(node.getFullyQualifiedName());
+			}
+		}
+		else if(binding instanceof IVariableBinding){
+			if(!seedVariables.contains(binding.getKey()))
+				seedVariables.add(binding.getKey());
 		}
 		
 		return true;

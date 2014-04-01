@@ -10,8 +10,6 @@ import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.HashSet;
 
-//import att.grappa.Graph;
-
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ASTVisitor;
@@ -27,6 +25,7 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
+import org.eclipse.jdt.core.dom.Block;
 
 
 import edu.cmu.cs.crystal.AbstractCrystalMethodAnalysis;
@@ -100,7 +99,7 @@ public class Slicer
 			/* Add the statement to the slice if:
 			 * 	1. It isn't in yet.
 			 * 	2. We are doing a data dependency analysis and the statement contains a seed variable. */
-			if(statement != null && !statementPairs.containsKey(new Integer(statement.getStartPosition()))) 
+			if(statement != null && !(statement instanceof Block) && !statementPairs.containsKey(new Integer(statement.getStartPosition()))) 
 			{
 				if(this.type == Slicer.Type.CONTROL){
 					statementPairs.put(new Integer(statement.getStartPosition()), statement);
@@ -249,6 +248,7 @@ public class Slicer
 		 * this into the line number using:
 		 * int org.eclipse.jdt.core.dom.CompilationUnit.getLineNumber(int position)
 		 */
+		if(node == null) return -1;
 		int characterPosition = node.getStartPosition();
 		int line = -1;
 		

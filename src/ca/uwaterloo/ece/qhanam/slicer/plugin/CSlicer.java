@@ -45,8 +45,8 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 {
 	private static final int SEED_LINE = 406;
 	private static final String METHOD = "hashCode";
-	private static final Slicer.Direction DIRECTION = Slicer.Direction.FORWARDS;
-	private static final Slicer.Type TYPE = Slicer.Type.DATA;
+	private static final Slicer.Direction DIRECTION = Slicer.Direction.BACKWARDS;
+	private static final Slicer.Type TYPE = Slicer.Type.CONTROL;
 	
 	public CSlicer() { }
 	
