@@ -1,6 +1,7 @@
 package ca.uwaterloo.ece.qhanam.slicer.test;
 
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.io.BufferedReader;
@@ -22,7 +23,7 @@ import ca.uwaterloo.ece.qhanam.slicer.Slicer;
 
 public class SlicerTest {
 	
-	private static final int SEED_LINE = 72;
+	private static final int SEED_LINE = 74;
 	private static final String METHOD = "doStuff";
 	private static final Slicer.Direction DIRECTION = Slicer.Direction.BACKWARDS;
 	private static final Slicer.Type TYPE = Slicer.Type.DATA;
@@ -32,8 +33,14 @@ public class SlicerTest {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		/* Begin Configurable Options ********** */
 		String project = "ca.uwaterloo.ece.qhanam.slicer";
 		String path = "/Users/qhanam/Documents/workspace_depanalysis/ca.uwaterloo.ece.qhanam.slicer/HelloWorld.java";
+		List<Slicer.Options> options = new LinkedList<Slicer.Options>();
+		options.add(Slicer.Options.ASSIGNMENT_ONLY);
+		options.add(Slicer.Options.CONTROL_EXPRESSIONS);
+		/* End Configurable Options ************ */
+		
 		String sourceCode;
 		
 		try{
@@ -61,7 +68,7 @@ public class SlicerTest {
 			System.out.println(problems[i].getOriginatingFileName());
 		}
 		
-		MethodVisitor methodVisitor = new MethodVisitor(METHOD, SEED_LINE, DIRECTION, TYPE);
+		MethodVisitor methodVisitor = new MethodVisitor(METHOD, SEED_LINE, DIRECTION, TYPE, options);
 		cu.accept(methodVisitor);
 	}
 	

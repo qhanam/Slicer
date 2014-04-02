@@ -47,8 +47,13 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 	private static final String METHOD = "hashCode";
 	private static final Slicer.Direction DIRECTION = Slicer.Direction.BACKWARDS;
 	private static final Slicer.Type TYPE = Slicer.Type.CONTROL;
+	private List<Slicer.Options> options;
 	
-	public CSlicer() { }
+	public CSlicer() { 
+		this.options = new LinkedList<Slicer.Options>();
+		this.options.add(Slicer.Options.ASSIGNMENT_ONLY);
+		this.options.add(Slicer.Options.CONTROL_EXPRESSIONS);
+	}
 	
 	@Override
 	public String getName() {
@@ -62,7 +67,7 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 			System.out.println("Starting Control Analysis");
 			System.out.flush();
 			
-			Slicer slicer = new Slicer(DIRECTION, TYPE);
+			Slicer slicer = new Slicer(DIRECTION, TYPE, this.options);
 			List<Statement> statements = slicer.sliceMethod(d, SEED_LINE);
 		
 			/* Print slice statements. */

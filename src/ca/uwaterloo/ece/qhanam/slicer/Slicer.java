@@ -44,6 +44,7 @@ public class Slicer
 {
 	private Type type;
 	private Direction direction;
+	private List<Options> options;
 	private LinkedList<Statement> statements;
 	
 	/**
@@ -51,10 +52,11 @@ public class Slicer
 	 * @param direction FORWARDS, BACKWARDS or BOTH
 	 * @param type The type of dependencies to track (CONTROL or DATA). Data dependencies subsume control dependencies.
 	 */
-	public Slicer(Direction direction, Type type) { 
+	public Slicer(Direction direction, Type type, List<Options> options) { 
 		this.statements = new LinkedList<Statement>();
 		this.direction = direction;
 		this.type = type;
+		this.options = options;
 	}
 
 	/**
@@ -84,6 +86,11 @@ public class Slicer
 		/* Get the list of variables in the seed node. */
 		if(this.type == Slicer.Type.DATA) seedVariables = Slicer.getSeedVariables(cfgNode);
 		
+		/* Since this is the seed, we automatically add it to the slice. (needed here for 
+		 * right-hand assignment slicing. */
+		Statement seed = getStatement((ASTNode) cfgNode.getASTNode());
+		statementPairs.put(new Integer(seed.getStartPosition()), seed);
+		
 		/* Build the control dependency slice. */
 		visited.clear();
 		stack.clear();
@@ -110,7 +117,12 @@ public class Slicer
 					 * if this is an assignment where the left hand side is a seed
 					 * variable from the right hand side.
 					 */
-					DataDependencyVisitor ddv = new DataDependencyVisitor(seedVariables);
+					DependencyVisitor ddv;
+					if(this.options.contains(Slicer.Options.ASSIGNMENT_ONLY)) ddv = new AssignmentDependencyVisitor(seedVariables, this.options);
+					else ddv = new DataDependencyVisitor(seedVariables);
+					
+					/* TODO: We can't just do this... if it's a statement with an expression and body then we 
+					 * should only inspect the expression part. */
 					statement.accept(ddv);
 					if(ddv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
 				}
@@ -274,5 +286,11 @@ public class Slicer
 	
 	public enum Type{
 		CONTROL, DATA
+	}
+	
+	public enum Options { 
+		NONE, 
+		ASSIGNMENT_ONLY, 		// Only looks at assignment and declaration expressions during data dependency analysis
+		CONTROL_EXPRESSIONS		// For control expressions (eg. if, for, while statements), don't look in the body for data dependencies
 	}
 }

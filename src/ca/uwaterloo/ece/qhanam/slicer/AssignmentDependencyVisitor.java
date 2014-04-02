@@ -12,6 +12,10 @@ import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.eclipse.jdt.core.dom.DoStatement;
 import org.eclipse.jdt.core.dom.IfStatement;
 import org.eclipse.jdt.core.dom.EnhancedForStatement;
@@ -26,7 +30,7 @@ import org.eclipse.jdt.core.dom.Block;
  * the given list.
  * @author qhanam
  */
-public class DataDependencyVisitor extends DependencyVisitor {
+public class AssignmentDependencyVisitor extends DependencyVisitor {
 	
 	/* The list of all possible variables and their aliases at this point in the CFG. */
 	private LinkedList<String> aliases;
@@ -38,28 +42,23 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * Create DataDependencyVisitor
 	 * @param 
 	 */
-	public DataDependencyVisitor(LinkedList<String> aliases){
+	public AssignmentDependencyVisitor(LinkedList<String> aliases, List<Slicer.Options> options){
 		super();
 		this.aliases = aliases;
+		this.options = options;
 	}
 	
 	/**
-	 * The first thing we do is add the variable to the node aliases if it is
-	 * present in a statement.
+	 * This is a data dependency if this is a declaration and the
+	 * variable being declared is in the right hand side of the
+	 * seed assignment expression.
 	 */
-	public boolean visit(SimpleName node){
-		/* All we really need from this is the variable binding. */
+	public boolean visit(SingleVariableDeclaration node){
 		IBinding binding = node.resolveBinding();
 		
-		/* Make sure this is a variable.
-		 * If we are just analyzing one source file,
-		 * we won't have binding info... so do our 
-		 * best effort at matching variables. */
 		if(binding == null){
-			if(!(node.getParent() instanceof MethodInvocation)){
-				if(this.aliases.contains(node.getFullyQualifiedName()))
-					this.result = true;
-			}
+			if(this.aliases.contains((node.getName().getFullyQualifiedName())))
+				this.result = true;
 		}
 		else if(binding instanceof IVariableBinding){
 			/* If this variable is in the alias list, then this statement 
@@ -72,8 +71,80 @@ public class DataDependencyVisitor extends DependencyVisitor {
 		return true;
 	}
 	
-	public boolean visit(Block node){
-		return false;
+	/**
+	 * This is a data dependency if this is a declaration and the
+	 * variable being declared is in the right hand side of the
+	 * seed assignment expression.
+	 */
+	public boolean visit(VariableDeclarationFragment node){
+		IBinding binding = node.resolveBinding();
+		
+		if(binding == null){
+			if(this.aliases.contains((node.getName().getFullyQualifiedName())))
+				this.result = true;
+		}
+		else if(binding instanceof IVariableBinding){
+			/* If this variable is in the alias list, then this statement 
+			 * is a data dependency. */
+			if(this.aliases.contains(binding.getKey())){
+				this.result = true;
+			}
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * This is a data dependency if this is an assignment and the
+	 * variable being assigned is in the right hand side of the
+	 * seed assignment expression.
+	 */
+	public boolean visit(Assignment node){
+		Expression lhs = node.getLeftHandSide();
+		if(lhs instanceof FieldAccess){
+			/* All we really need from this is the variable binding. */
+			IBinding binding = ((FieldAccess) lhs).resolveFieldBinding();
+			
+			/* Make sure this is a variable.
+			 * If we are just analyzing one source file,
+			 * we won't have binding info... so do our 
+			 * best effort at matching variables. */
+			if(binding == null){
+				if(this.aliases.contains(((FieldAccess) lhs).getName().getFullyQualifiedName()))
+					this.result = true;
+			}
+			else if(binding instanceof IVariableBinding){
+				/* If this variable is in the alias list, then this statement 
+				 * is a data dependency. */
+				if(this.aliases.contains(binding.getKey())){
+					this.result = true;
+				}
+			}
+		}
+		else if(lhs instanceof SimpleName){
+			/* All we really need from this is the variable binding. */
+			IBinding binding = ((SimpleName)lhs).resolveBinding();
+			
+			/* Make sure this is a variable.
+			 * If we are just analyzing one source file,
+			 * we won't have binding info... so do our 
+			 * best effort at matching variables. */
+			if(binding == null){
+				if(!(node.getParent() instanceof MethodInvocation)){
+					if(this.aliases.contains(((SimpleName)lhs).getFullyQualifiedName()))
+						this.result = true;
+				}
+			}
+			else if(binding instanceof IVariableBinding){
+				/* If this variable is in the alias list, then this statement 
+				 * is a data dependency. */
+				if(this.aliases.contains(binding.getKey())){
+					this.result = true;
+				}
+			}
+		}
+		
+		return true;
 	}
 	
 	/**

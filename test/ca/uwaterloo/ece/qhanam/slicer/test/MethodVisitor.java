@@ -20,12 +20,14 @@ public class MethodVisitor extends ASTVisitor
 	private int seedLine;
 	private Slicer.Direction direction;
 	private Slicer.Type type;
+	private List<Slicer.Options> options;
 	
-	public MethodVisitor(String methodName, int seedLine, Slicer.Direction direction, Slicer.Type type){
+	public MethodVisitor(String methodName, int seedLine, Slicer.Direction direction, Slicer.Type type, List<Slicer.Options> options){
 		this.methodName = methodName;
 		this.seedLine = seedLine;
 		this.direction = direction;
 		this.type = type;
+		this.options = options;
 	}
 	
 	@Override
@@ -38,12 +40,13 @@ public class MethodVisitor extends ASTVisitor
 		/* If this is the method we want to analyze,
 		 * call the analysis. */
 		if(node.getName().toString().equals(this.methodName)){
-			Slicer slicer = new Slicer(direction, type);
+			Slicer slicer = new Slicer(direction, type, options);
 			List<Statement> statements = slicer.sliceMethod(node, seedLine);
 			
 			System.out.println("Slice Results:");
 			for(Statement statement : statements){
-				System.out.println(statement.toString());
+				System.out.println("Node Type: " + statement.getNodeType());
+				System.out.println(statement.toString());		
 			}
 		}
 		
