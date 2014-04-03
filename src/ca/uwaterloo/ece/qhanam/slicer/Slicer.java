@@ -26,7 +26,9 @@ import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
 import org.eclipse.jdt.core.dom.Block;
-
+import org.eclipse.jdt.core.dom.MethodRef;
+import org.eclipse.jdt.core.dom.MethodRefParameter;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 
 import edu.cmu.cs.crystal.AbstractCrystalMethodAnalysis;
 import edu.cmu.cs.crystal.AbstractCompilationUnitAnalysis;
@@ -45,7 +47,7 @@ public class Slicer
 	private Type type;
 	private Direction direction;
 	private List<Options> options;
-	private LinkedList<Statement> statements;
+	private LinkedList<ASTNode> statements;
 	
 	/**
 	 * Creates a slicer instance. See ca.uwaterloo.ece.qhanam.slicer.plugin.CSlicer for sample usage.
@@ -53,7 +55,7 @@ public class Slicer
 	 * @param type The type of dependencies to track (CONTROL or DATA). Data dependencies subsume control dependencies.
 	 */
 	public Slicer(Direction direction, Type type, List<Options> options) { 
-		this.statements = new LinkedList<Statement>();
+		this.statements = new LinkedList<ASTNode>();
 		this.direction = direction;
 		this.type = type;
 		this.options = options;
@@ -65,10 +67,8 @@ public class Slicer
 	 * @param seedLine The line number of the seed statement.
 	 * @return
 	 */
-	public List<Statement> sliceMethod(MethodDeclaration d, int seedLine) {
-		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
-		Hashtable<Integer,Statement> statementPairs = new Hashtable<Integer,Statement>();
-		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
+	public List<ASTNode> sliceMethod(MethodDeclaration d, int seedLine) {
+		Hashtable<Integer,ASTNode> statementPairs = new Hashtable<Integer,ASTNode>();
 		LinkedList<String> seedVariables = null;
 		
 		/* Build the CFG from the method declaration. */
@@ -92,9 +92,39 @@ public class Slicer
 		statementPairs.put(new Integer(seed.getStartPosition()), seed);
 		
 		/* Build the control dependency slice. */
-		visited.clear();
-		stack.clear();
+		this.statements = computeSlice(cfgNode, seedVariables, statementPairs);
+
+		return this.statements;
+	}
+	
+	/**
+	 * Computes the slice.
+	 * @param cfgNode The node to start with.
+	 * @return
+	 */
+	public LinkedList<ASTNode> computeSlice(ICFGNode<ASTNode> cfgNode, LinkedList<String> seedVariables, 
+												Hashtable<Integer, ASTNode> statementPairs){
+		LinkedList<ASTNode> statements = new LinkedList<ASTNode>();
+		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
+		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
+		
+		/* Start by checking the method parameters for data dependencies. */
+		if(this.type == Slicer.Type.DATA){
+			MethodDeclaration method = Slicer.getMethod(cfgNode.getASTNode());
+			if(method != null){
+				System.out.println("Method declaration found!");
+				List<SingleVariableDeclaration> parameters = method.parameters();
+				for(SingleVariableDeclaration parameter : parameters){
+					if(seedVariables.contains(parameter.getName().getFullyQualifiedName())){
+						statementPairs.put(new Integer(method.getStartPosition()), method);
+					}
+				}
+			}
+		}
+		
+		/* Build the control dependency slice. */
 		stack.add(cfgNode);
+		
 		/* Breadth first search. Add each statement to the list when found. */
 		while(!stack.empty()){
 			Set<ICFGEdge<ASTNode>> neighbours;
@@ -102,6 +132,10 @@ public class Slicer
 			cfgNode = stack.pop();
 			ASTNode astNode = (ASTNode) cfgNode.getASTNode();
 			Statement statement = getStatement(astNode);
+			
+			if(astNode instanceof MethodRef){
+				System.out.println("MethodRef found: " + astNode);
+			}
 			
 			/* Add the statement to the slice if:
 			 * 	1. It isn't in yet.
@@ -145,11 +179,11 @@ public class Slicer
 		}
 		
 		/* Add the statements to the list. */
-		for(Statement statement : statementPairs.values()){
-			this.statements.add(statement);
+		for(ASTNode statement : statementPairs.values()){
+			statements.add(statement);
 		}
-
-		return this.statements;
+		
+		return statements;
 	}
 	
 	/**
@@ -236,11 +270,26 @@ public class Slicer
 	}
 	
 	/**
+	 * Finds the method reference for this ASTNode.
+	 * @param astNode The node to start the search at.
+	 * @return
+	 */
+	public static MethodDeclaration getMethod(ASTNode astNode){
+		/* Visit parents until we get to the method reference. */
+		if(astNode == null) return null;
+		while(!(astNode instanceof MethodDeclaration)){
+			if(astNode.getParent() == null) return null;
+			astNode = astNode.getParent();
+		}
+		return (MethodDeclaration) astNode;
+	}
+	
+	/**
 	 * Finds the statement that contains the ASTNode. Useful
 	 * for finding the statement after we've found a variable.
 	 */
 	public static Statement getStatement(ASTNode statement){
-		/* Visit parents until we get to a statement. Add the statement to the list. */
+		/* Visit parents until we get to a statement. */
 		if(statement == null) return null;
 		while(!(statement instanceof Statement)){
 			if(statement.getParent() == null) return null;

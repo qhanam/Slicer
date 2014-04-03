@@ -6,6 +6,7 @@ import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.ASTNode;
 
 import ca.uwaterloo.ece.qhanam.slicer.Slicer;
 
@@ -41,12 +42,16 @@ public class MethodVisitor extends ASTVisitor
 		 * call the analysis. */
 		if(node.getName().toString().equals(this.methodName)){
 			Slicer slicer = new Slicer(direction, type, options);
-			List<Statement> statements = slicer.sliceMethod(node, seedLine);
+			List<ASTNode> statements = slicer.sliceMethod(node, seedLine);
 			
 			System.out.println("Slice Results:");
-			for(Statement statement : statements){
+			for(ASTNode statement : statements){
 				System.out.println("Node Type: " + statement.getNodeType());
-				System.out.println(statement.toString());		
+				int line = Slicer.getLineNumber(statement);
+				if(statement instanceof Statement)
+					System.out.println(line + ": " + statement.toString());		
+				if(statement instanceof MethodDeclaration)
+					System.out.println(line + ": " + ((MethodDeclaration)statement).getName().toString() + "\n");
 			}
 		}
 		

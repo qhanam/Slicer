@@ -68,7 +68,7 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 			System.out.flush();
 			
 			Slicer slicer = new Slicer(DIRECTION, TYPE, this.options);
-			List<Statement> statements = slicer.sliceMethod(d, SEED_LINE);
+			List<ASTNode> statements = slicer.sliceMethod(d, SEED_LINE);
 		
 			/* Print slice statements. */
 			System.out.println("\nNodes in slice:");

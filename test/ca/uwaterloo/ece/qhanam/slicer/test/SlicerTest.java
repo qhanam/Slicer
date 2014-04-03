@@ -23,8 +23,8 @@ import ca.uwaterloo.ece.qhanam.slicer.Slicer;
 
 public class SlicerTest {
 	
-	private static final int SEED_LINE = 74;
-	private static final String METHOD = "doStuff";
+	private static final int SEED_LINE = 124;
+	private static final String METHOD = "checkData";
 	private static final Slicer.Direction DIRECTION = Slicer.Direction.BACKWARDS;
 	private static final Slicer.Type TYPE = Slicer.Type.DATA;
 
@@ -35,7 +35,7 @@ public class SlicerTest {
 	public static void main(String[] args) {
 		/* Begin Configurable Options ********** */
 		String project = "ca.uwaterloo.ece.qhanam.slicer";
-		String path = "/Users/qhanam/Documents/workspace_depanalysis/ca.uwaterloo.ece.qhanam.slicer/HelloWorld.java";
+		String path = "/Users/qhanam/Documents/workspace_depanalysis/ca.uwaterloo.ece.qhanam.slicer/1-0.java";
 		List<Slicer.Options> options = new LinkedList<Slicer.Options>();
 		options.add(Slicer.Options.ASSIGNMENT_ONLY);
 		options.add(Slicer.Options.CONTROL_EXPRESSIONS);
