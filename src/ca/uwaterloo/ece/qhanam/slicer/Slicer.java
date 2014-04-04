@@ -10,25 +10,7 @@ import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.IfStatement;
-import org.eclipse.jdt.core.dom.Initializer;
-import org.eclipse.jdt.core.dom.Assignment;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.Statement;
-import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
-import org.eclipse.jdt.core.dom.VariableDeclaration;
-import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
-import org.eclipse.jdt.core.dom.Block;
-import org.eclipse.jdt.core.dom.MethodRef;
-import org.eclipse.jdt.core.dom.MethodRefParameter;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.*;
 
 import edu.cmu.cs.crystal.AbstractCrystalMethodAnalysis;
 import edu.cmu.cs.crystal.AbstractCompilationUnitAnalysis;
@@ -89,10 +71,11 @@ public class Slicer
 		/* Since this is the seed, we automatically add it to the slice. (needed here for 
 		 * right-hand assignment slicing. */
 		Statement seed = getStatement((ASTNode) cfgNode.getASTNode());
-		statementPairs.put(new Integer(seed.getStartPosition()), seed);
+		if(!this.options.contains(Slicer.Options.OMIT_SEED))
+			statementPairs.put(new Integer(seed.getStartPosition()), seed);
 		
 		/* Build the control dependency slice. */
-		this.statements = computeSlice(cfgNode, seedVariables, statementPairs);
+		this.statements = computeSlice(cfgNode, seedVariables, statementPairs, seedLine);
 
 		return this.statements;
 	}
@@ -102,14 +85,14 @@ public class Slicer
 	 * @param cfgNode The node to start with.
 	 * @return
 	 */
-	public LinkedList<ASTNode> computeSlice(ICFGNode<ASTNode> cfgNode, LinkedList<String> seedVariables, 
-												Hashtable<Integer, ASTNode> statementPairs){
+	private LinkedList<ASTNode> computeSlice(ICFGNode<ASTNode> cfgNode, LinkedList<String> seedVariables, 
+												Hashtable<Integer, ASTNode> statementPairs, int seedLine){
 		LinkedList<ASTNode> statements = new LinkedList<ASTNode>();
 		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
 		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
 		
 		/* Start by checking the method parameters for data dependencies. */
-		if(this.type == Slicer.Type.DATA){
+		if(this.type == Slicer.Type.DATA && !this.options.contains(Slicer.Options.CONDITIONAL_ONLY)){
 			MethodDeclaration method = Slicer.getMethod(cfgNode.getASTNode());
 			if(method != null){
 				System.out.println("Method declaration found!");
@@ -143,7 +126,9 @@ public class Slicer
 			if(statement != null && !(statement instanceof Block) && !statementPairs.containsKey(new Integer(statement.getStartPosition()))) 
 			{
 				if(this.type == Slicer.Type.CONTROL){
-					statementPairs.put(new Integer(statement.getStartPosition()), statement);
+					if((!this.options.contains(Slicer.Options.CONDITIONAL_ONLY) || Slicer.isConditional(statement)) &&
+							(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine))
+						statementPairs.put(new Integer(statement.getStartPosition()), statement);
 				}
 				else if(this.type == Slicer.Type.DATA){
 					/* TODO: Check if this statement contains a seed variable.
@@ -158,7 +143,11 @@ public class Slicer
 					/* TODO: We can't just do this... if it's a statement with an expression and body then we 
 					 * should only inspect the expression part. */
 					statement.accept(ddv);
-					if(ddv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
+					if(ddv.result){
+						if((!this.options.contains(Slicer.Options.CONDITIONAL_ONLY) || Slicer.isConditional(statement)) &&
+								(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine))
+							statementPairs.put(new Integer(statement.getStartPosition()), statement);
+					}
 				}
 			}
 			
@@ -329,6 +318,22 @@ public class Slicer
 		return line;
 	}
 	
+	/**
+	 * Determines if this ASTNode is a conditional statement.
+	 * Conditional statements include: if,do,while,for,switch
+	 * @param node
+	 * @return
+	 */
+	public static boolean isConditional(ASTNode node){
+		if(node instanceof IfStatement) return true;
+		if(node instanceof DoStatement) return true;
+		if(node instanceof EnhancedForStatement) return true;
+		if(node instanceof ForStatement) return true;
+		if(node instanceof SwitchStatement) return true;
+		if(node instanceof WhileStatement) return true;
+		return false;
+	}
+	
 	public enum Direction {
 	    BACKWARDS, FORWARDS, BOTH
 	}
@@ -340,6 +345,8 @@ public class Slicer
 	public enum Options { 
 		NONE, 
 		ASSIGNMENT_ONLY, 		// Only looks at assignment and declaration expressions during data dependency analysis
-		CONTROL_EXPRESSIONS		// For control expressions (eg. if, for, while statements), don't look in the body for data dependencies
+		CONDITIONAL_ONLY,		// Only returns conditional statements
+		CONTROL_EXPRESSIONS,	// For control expressions (eg. if, for, while statements), don't look in the body for data dependencies
+		OMIT_SEED				// Leave the seed statement out of the slice.
 	}
 }

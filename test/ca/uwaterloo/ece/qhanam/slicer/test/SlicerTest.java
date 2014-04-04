@@ -22,25 +22,59 @@ import org.eclipse.jdt.core.compiler.IProblem;
 import ca.uwaterloo.ece.qhanam.slicer.Slicer;
 
 public class SlicerTest {
-	
-	private static final int SEED_LINE = 124;
-	private static final String METHOD = "checkData";
-	private static final Slicer.Direction DIRECTION = Slicer.Direction.BACKWARDS;
-	private static final Slicer.Type TYPE = Slicer.Type.DATA;
 
 	/**
-	 * Test the slicing tool.
-	 * @param args
+	 * An example demonstrating how to use the slicing tool for control and 
+	 * data dependencies.
+	 * 
+	 * @param args No arguments.
 	 */
-	public static void main(String[] args) {
-		/* Begin Configurable Options ********** */
+	public static void main(String[] args) throws Exception {
+		
+		/* *********
+		 * Sample run of 1-0.java
+		 * *********/
+		
 		String project = "ca.uwaterloo.ece.qhanam.slicer";
-		String path = "/Users/qhanam/Documents/workspace_depanalysis/ca.uwaterloo.ece.qhanam.slicer/1-0.java";
-		List<Slicer.Options> options = new LinkedList<Slicer.Options>();
+		String path = "1-0.java";
+		String method = "checkData";
+		int seedLine = 124;
+		
+		CompilationUnit cu = SlicerTest.getAST(path);
+		List<Slicer.Options> options;
+		MethodVisitor methodVisitor;
+		
+		/* *********
+		 * Control slice
+		 * *********/
+		
+		System.out.println("CONTROL SLICE ***********");
+		options = new LinkedList<Slicer.Options>();
+		options.add(Slicer.Options.CONDITIONAL_ONLY);
+		options.add(Slicer.Options.OMIT_SEED);
+		
+		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.CONTROL, options);
+		cu.accept(methodVisitor);
+		
+		/* *********
+		 * Data Slice
+		 * *********/
+		System.out.println("DATA SLICE ***********");
+		options = new LinkedList<Slicer.Options>();
 		options.add(Slicer.Options.ASSIGNMENT_ONLY);
 		options.add(Slicer.Options.CONTROL_EXPRESSIONS);
-		/* End Configurable Options ************ */
+		options.add(Slicer.Options.OMIT_SEED);
 		
+		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.DATA, options);
+		cu.accept(methodVisitor);
+	}
+	
+	/**
+	 * Reads the file and generates an AST.
+	 * @param path
+	 * @return
+	 */
+	public static CompilationUnit getAST(String path){
 		String sourceCode;
 		
 		try{
@@ -49,7 +83,7 @@ public class SlicerTest {
 		}
 		catch(Exception e){
 			System.out.println(e.getMessage());
-			return;
+			return null;
 		}
 		
 		ASTParser parser = ASTParser.newParser(AST.JLS3);
@@ -62,14 +96,14 @@ public class SlicerTest {
 		
 		/* Print any problems the compiler encountered. */
 		IProblem[] problems = cu.getProblems();
+		if(problems.length > 0) System.out.println("WARNING: Errors while parsing file!");
 		for(int i = 0; i < problems.length; i++){
 			System.out.println(problems[i].getMessage());
 			System.out.println(problems[i].getSourceLineNumber());
 			System.out.println(problems[i].getOriginatingFileName());
 		}
 		
-		MethodVisitor methodVisitor = new MethodVisitor(METHOD, SEED_LINE, DIRECTION, TYPE, options);
-		cu.accept(methodVisitor);
+		return cu;
 	}
 	
 	/**
