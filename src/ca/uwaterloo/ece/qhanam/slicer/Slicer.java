@@ -127,6 +127,8 @@ public class Slicer
 				if(this.type == Slicer.Type.CONTROL){
 					if((!this.options.contains(Slicer.Options.CONDITIONAL_ONLY) || Slicer.isConditional(statement)) &&
 							(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine))
+						// TODO: We also need to check that there is a control dependency to the seed
+						// statement within the body of the conditional statement
 						statementPairs.put(new Integer(statement.getStartPosition()), statement);
 				}
 				else if(this.type == Slicer.Type.DATA){

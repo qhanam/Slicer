@@ -43,6 +43,7 @@ public class MethodVisitor extends ASTVisitor
 		if(node.getName().toString().equals(this.methodName)){
 			Slicer slicer = new Slicer(direction, type, options);
 			List<ASTNode> statements = slicer.sliceMethod(node, seedLine);
+			if(statements == null) return false;
 			
 			System.out.println("Slice Results:");
 			for(ASTNode statement : statements){
@@ -55,6 +56,6 @@ public class MethodVisitor extends ASTVisitor
 			}
 		}
 		
-		return true;
+		return false;
 	}
 }
