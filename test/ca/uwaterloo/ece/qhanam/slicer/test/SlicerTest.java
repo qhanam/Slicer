@@ -35,10 +35,9 @@ public class SlicerTest {
 		 * Sample run of 1-0.java
 		 * *********/
 		
-		String project = "ca.uwaterloo.ece.qhanam.slicer";
-		String path = "1-0.java";
-		String method = "checkData";
-		int seedLine = 124;
+		String path = "Test1.java";
+		String method = "drawLine";
+		int seedLine = 6;
 		
 		CompilationUnit cu = SlicerTest.getAST(path);
 		List<Slicer.Options> options;

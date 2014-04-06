@@ -95,7 +95,6 @@ public class Slicer
 		if(this.type == Slicer.Type.DATA && !this.options.contains(Slicer.Options.CONDITIONAL_ONLY)){
 			MethodDeclaration method = Slicer.getMethod(cfgNode.getASTNode());
 			if(method != null){
-				System.out.println("Method declaration found!");
 				List<SingleVariableDeclaration> parameters = method.parameters();
 				for(SingleVariableDeclaration parameter : parameters){
 					if(seedVariables.contains(parameter.getName().getFullyQualifiedName())){
