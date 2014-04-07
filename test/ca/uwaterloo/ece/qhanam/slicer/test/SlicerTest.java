@@ -27,6 +27,9 @@ public class SlicerTest {
 	 * An example demonstrating how to use the slicing tool for control and 
 	 * data dependencies.
 	 * 
+	 * GC.java {drawString, 2112}
+	 * Test2.java {getLaunchConfigurations, 7}
+	 * 
 	 * @param args No arguments.
 	 */
 	public static void main(String[] args) throws Exception {
@@ -35,9 +38,9 @@ public class SlicerTest {
 		 * Sample run of 1-0.java
 		 * *********/
 		
-		String path = "GC.java";
-		String method = "drawString";
-		int seedLine = 2112;
+		String path = "Test2.java";
+		String method = "getLaunchConfigurations";
+		int seedLine = 6;
 		
 		CompilationUnit cu = SlicerTest.getAST(path);
 		List<Slicer.Options> options;

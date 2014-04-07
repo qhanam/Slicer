@@ -122,6 +122,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 		 * it is a control dependency */
 		if(ControlDependencyVisitor.contains(node, this.seed)){
 			this.result = true;
+			return;
 		}
 
 		/* If this conditional statement contains a return statement in its
