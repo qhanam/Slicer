@@ -90,9 +90,10 @@ public class Slicer
 		LinkedList<ASTNode> statements = new LinkedList<ASTNode>();
 		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
 		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
+		ASTNode seed = cfgNode.getASTNode();
 		
 		/* Start by checking the method parameters for data dependencies. */
-		if(this.type == Slicer.Type.DATA && !this.options.contains(Slicer.Options.CONDITIONAL_ONLY)){
+		if(this.type == Slicer.Type.DATA){
 			MethodDeclaration method = Slicer.getMethod(cfgNode.getASTNode());
 			if(method != null){
 				List<SingleVariableDeclaration> parameters = method.parameters();
@@ -121,33 +122,22 @@ public class Slicer
 			
 			/* Add the statement to the slice if:
 			 * 	1. It isn't in yet.
-			 * 	2. We are doing a data dependency analysis and the statement contains a seed variable. */
+			 * 	2. We are doing a data dep analysis and it is a data dependency
+			 * 	3. We are doing a control dep analysis and it is a control dependency */
 			if(statement != null && !(statement instanceof Block) && !statementPairs.containsKey(new Integer(statement.getStartPosition()))) 
 			{
 				if(this.type == Slicer.Type.CONTROL){
-					if((!this.options.contains(Slicer.Options.CONDITIONAL_ONLY) || Slicer.isConditional(statement)) &&
-							(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine))
-						// TODO: We also need to check that there is a control dependency to the seed
-						// statement within the body of the conditional statement
-						statementPairs.put(new Integer(statement.getStartPosition()), statement);
+					if(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine){
+						DependencyVisitor cdv = new ControlDependencyVisitor(this.options, seed);
+						statement.accept(cdv);
+						if(cdv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
+					}
 				}
 				else if(this.type == Slicer.Type.DATA){
-					/* TODO: Check if this statement contains a seed variable.
-					 * 	We do the more general case first... later we will only check
-					 * if this is an assignment where the left hand side is a seed
-					 * variable from the right hand side.
-					 */
-					DependencyVisitor ddv;
-					if(this.options.contains(Slicer.Options.ASSIGNMENT_ONLY)) ddv = new AssignmentDependencyVisitor(seedVariables, this.options);
-					else ddv = new DataDependencyVisitor(seedVariables);
-					
-					/* TODO: We can't just do this... if it's a statement with an expression and body then we 
-					 * should only inspect the expression part. */
-					statement.accept(ddv);
-					if(ddv.result){
-						if((!this.options.contains(Slicer.Options.CONDITIONAL_ONLY) || Slicer.isConditional(statement)) &&
-								(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine))
-							statementPairs.put(new Integer(statement.getStartPosition()), statement);
+					if(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine){
+						DependencyVisitor ddv = new DataDependencyVisitor(seedVariables, this.options);
+						statement.accept(ddv);
+						if(ddv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
 					}
 				}
 			}
@@ -319,22 +309,6 @@ public class Slicer
 		return line;
 	}
 	
-	/**
-	 * Determines if this ASTNode is a conditional statement.
-	 * Conditional statements include: if,do,while,for,switch
-	 * @param node
-	 * @return
-	 */
-	public static boolean isConditional(ASTNode node){
-		if(node instanceof IfStatement) return true;
-		if(node instanceof DoStatement) return true;
-		if(node instanceof EnhancedForStatement) return true;
-		if(node instanceof ForStatement) return true;
-		if(node instanceof SwitchStatement) return true;
-		if(node instanceof WhileStatement) return true;
-		return false;
-	}
-	
 	public enum Direction {
 	    BACKWARDS, FORWARDS, BOTH
 	}
@@ -345,8 +319,6 @@ public class Slicer
 	
 	public enum Options { 
 		NONE, 
-		ASSIGNMENT_ONLY, 		// Only looks at assignment and declaration expressions during data dependency analysis
-		CONDITIONAL_ONLY,		// Only returns conditional statements
 		CONTROL_EXPRESSIONS,	// For control expressions (eg. if, for, while statements), don't look in the body for data dependencies
 		OMIT_SEED				// Leave the seed statement out of the slice.
 	}

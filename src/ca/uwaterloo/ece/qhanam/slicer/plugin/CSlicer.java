@@ -51,7 +51,6 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 	
 	public CSlicer() { 
 		this.options = new LinkedList<Slicer.Options>();
-		this.options.add(Slicer.Options.ASSIGNMENT_ONLY);
 		this.options.add(Slicer.Options.CONTROL_EXPRESSIONS);
 	}
 	

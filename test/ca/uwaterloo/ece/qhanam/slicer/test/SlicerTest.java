@@ -49,7 +49,6 @@ public class SlicerTest {
 		
 		System.out.println("CONTROL SLICE ***********");
 		options = new LinkedList<Slicer.Options>();
-		options.add(Slicer.Options.CONDITIONAL_ONLY);
 		options.add(Slicer.Options.OMIT_SEED);
 		
 		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.CONTROL, options);
@@ -60,7 +59,6 @@ public class SlicerTest {
 		 * *********/
 		System.out.println("DATA SLICE ***********");
 		options = new LinkedList<Slicer.Options>();
-		options.add(Slicer.Options.ASSIGNMENT_ONLY);
 		options.add(Slicer.Options.CONTROL_EXPRESSIONS);
 		options.add(Slicer.Options.OMIT_SEED);
 		

@@ -56,26 +56,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 	 * this conditional statement.
 	 */
 	public boolean visit(IfStatement node){
-		ReturnVisitor rv = new ReturnVisitor();
-		
-		/* If this conditional statement contains the seed statement, then
-		 * it is a control dependency */
-		if(ControlDependencyVisitor.contains(node, this.seed)){
-			this.result = true;
-			return false;
-		}
-
-		/* If this conditional statement contains a return statement in its
-		 * body, then it is a control dependency.
-		 */
-		node.getThenStatement().accept(rv);
-		this.result = rv.result;
-		
-		if(node.getElseStatement() != null){
-			node.getElseStatement().accept(rv);
-			this.result = rv.result;
-		}
-		
+		this.isControlDependency(node);
 		return false;
 	}
 	
@@ -84,21 +65,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 	 * this conditional statement.
 	 */
 	public boolean visit(WhileStatement node){
-		ReturnVisitor rv = new ReturnVisitor();
-		
-		/* If this conditional statement contains the seed statement, then
-		 * it is a control dependency */
-		if(ControlDependencyVisitor.contains(node, this.seed)){
-			this.result = true;
-			return false;
-		}
-
-		/* If this conditional statement contains a return statement in its
-		 * body, then it is a control dependency.
-		 */
-		node.getBody().accept(rv);
-		this.result = rv.result;
-		
+		this.isControlDependency(node);
 		return false;
 	}
 	
@@ -107,21 +74,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 	 * this conditional statement.
 	 */
 	public boolean visit(DoStatement node){
-		ReturnVisitor rv = new ReturnVisitor();
-		
-		/* If this conditional statement contains the seed statement, then
-		 * it is a control dependency */
-		if(ControlDependencyVisitor.contains(node, this.seed)){
-			this.result = true;
-			return false;
-		}
-
-		/* If this conditional statement contains a return statement in its
-		 * body, then it is a control dependency.
-		 */
-		node.getBody().accept(rv);
-		this.result = rv.result;
-		
+		this.isControlDependency(node);
 		return false;
 	}
 	
@@ -130,21 +83,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 	 * this conditional statement.
 	 */
 	public boolean visit(EnhancedForStatement node){
-		ReturnVisitor rv = new ReturnVisitor();
-		
-		/* If this conditional statement contains the seed statement, then
-		 * it is a control dependency */
-		if(ControlDependencyVisitor.contains(node, this.seed)){
-			this.result = true;
-			return false;
-		}
-
-		/* If this conditional statement contains a return statement in its
-		 * body, then it is a control dependency.
-		 */
-		node.getBody().accept(rv);
-		this.result = rv.result;
-		
+		this.isControlDependency(node);
 		return false;
 	}
 	
@@ -153,21 +92,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 	 * this conditional statement.
 	 */
 	public boolean visit(ForStatement node){
-		ReturnVisitor rv = new ReturnVisitor();
-		
-		/* If this conditional statement contains the seed statement, then
-		 * it is a control dependency */
-		if(ControlDependencyVisitor.contains(node, this.seed)){
-			this.result = true;
-			return false;
-		}
-
-		/* If this conditional statement contains a return statement in its
-		 * body, then it is a control dependency.
-		 */
-		node.getBody().accept(rv);
-		this.result = rv.result;
-		
+		this.isControlDependency(node);
 		return false;
 	}
 	
@@ -176,22 +101,34 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 	 * this conditional statement.
 	 */
 	public boolean visit(SwitchStatement node){
+		this.isControlDependency(node);
+		return false;
+	}
+	
+	/**
+	 * The seed statement is control dependent on another statement
+	 * if that statement affects the whether or not the seed
+	 * statement is executed. We therefore look at conditional
+	 * statements that the seed is enclosed in as well as 
+	 * conditional statements that contain return statements.
+	 * 
+	 * @param node The conditional statement.
+	 * @return
+	 */
+	public void isControlDependency(ASTNode node){
 		ReturnVisitor rv = new ReturnVisitor();
 		
 		/* If this conditional statement contains the seed statement, then
 		 * it is a control dependency */
 		if(ControlDependencyVisitor.contains(node, this.seed)){
 			this.result = true;
-			return false;
 		}
 
 		/* If this conditional statement contains a return statement in its
 		 * body, then it is a control dependency.
 		 */
-		node.accept(rv);	// TODO: We can do this for all conditional statements instead of only looking at the body...
+		node.accept(rv);
 		this.result = rv.result;
-		
-		return false;
 	}
 	
 	/**
@@ -209,22 +146,6 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 		 * it is a control dependency */
 		if(seedPosition >= start & seedPosition <= end)
 			return true;
-		return false;
-	}
-	
-	/**
-	 * Determines if this ASTNode is a conditional statement.
-	 * Conditional statements include: if,do,while,for,switch
-	 * @param node
-	 * @return
-	 */
-	public static boolean isConditional(ASTNode node){
-		if(node instanceof IfStatement) return true;
-		if(node instanceof DoStatement) return true;
-		if(node instanceof EnhancedForStatement) return true;
-		if(node instanceof ForStatement) return true;
-		if(node instanceof SwitchStatement) return true;
-		if(node instanceof WhileStatement) return true;
 		return false;
 	}
 	
