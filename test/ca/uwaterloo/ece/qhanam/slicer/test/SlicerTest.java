@@ -29,6 +29,7 @@ public class SlicerTest {
 	 * 
 	 * GC.java {drawString, 2112}
 	 * Test2.java {getLaunchConfigurations, 7}
+	 * Test3.java {computeTrim, 7}
 	 * 
 	 * @param args No arguments.
 	 */
@@ -38,9 +39,9 @@ public class SlicerTest {
 		 * Sample run of 1-0.java
 		 * *********/
 		
-		String path = "Test2.java";
-		String method = "getLaunchConfigurations";
-		int seedLine = 6;
+		String path = "Test3.java";
+		String method = "computeTrim";
+		int seedLine = 7;
 		
 		CompilationUnit cu = SlicerTest.getAST(path);
 		List<Slicer.Options> options;

@@ -102,6 +102,11 @@ public class SeedVisitor extends ASTVisitor {
 	 */
 	public boolean visit(Assignment node){
 		node.getRightHandSide().accept(this);
+		/* If the operator uses the original variable, then
+		 * we need to add it as well (ie. anything operator except
+		 * regular assignment) */
+		if(node.getOperator() != Assignment.Operator.ASSIGN)
+			node.getLeftHandSide().accept(this);
 		return false;
 	}
 	

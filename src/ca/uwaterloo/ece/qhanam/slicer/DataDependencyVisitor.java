@@ -29,6 +29,10 @@ import org.eclipse.jdt.core.dom.QualifiedName;
 /**
  * Checks whether this ASTNode (Statement) contains a data dependency from
  * the given list.
+ * 
+ * TODO: We should really consider method invocations on tracked objects as
+ * 	data dependencies for backwards slices.
+ * 
  * @author qhanam
  */
 public class DataDependencyVisitor extends DependencyVisitor {
