@@ -21,7 +21,7 @@ import org.eclipse.jdt.core.compiler.IProblem;
 
 import ca.uwaterloo.ece.qhanam.slicer.Slicer;
 
-public class SlicerTest {
+public class SampleUse {
 
 	/**
 	 * An example demonstrating how to use the slicing tool for control and 
@@ -29,7 +29,7 @@ public class SlicerTest {
 	 * 
 	 * GC.java {drawString, 2112}
 	 * Test2.java {getLaunchConfigurations, 7}
-	 * Test3.java {computeTrim, 7}
+	 * Scrollable.java {computeTrim, 7}
 	 * 
 	 * @param args No arguments.
 	 */
@@ -38,12 +38,11 @@ public class SlicerTest {
 		/* *********
 		 * Sample run of 1-0.java
 		 * *********/
+		String path = "test_files/drawString-1.java";
+		String method = "drawString";
+		int seedLine = 10;
 		
-		String path = "Test3.java";
-		String method = "computeTrim";
-		int seedLine = 7;
-		
-		CompilationUnit cu = SlicerTest.getAST(path);
+		CompilationUnit cu = SampleUse.getAST(path);
 		List<Slicer.Options> options;
 		MethodVisitor methodVisitor;
 		
@@ -80,7 +79,7 @@ public class SlicerTest {
 		
 		try{
 			/* We need the source code in a string. */
-			sourceCode = SlicerTest.getText(new File(path));
+			sourceCode = SampleUse.getText(new File(path));
 		}
 		catch(Exception e){
 			System.out.println(e.getMessage());
@@ -115,12 +114,13 @@ public class SlicerTest {
 	public static String getText(File file) throws Exception
 	{		
 		BufferedReader reader = new BufferedReader(new FileReader(file));
+		String content = "";
 		String line = "";
-		int c;
 
-		while((c = reader.read()) != -1) line += (char) c;
+		while((line = reader.readLine()) != null){
+			content += line + "\n";
+		}
 		
-		line = line.replace(";;", ";"); // Do we really need this?
-		return line;
+		return content;
 	}
 }

@@ -74,7 +74,7 @@
     static final int FOREGROUND_TEXT = 1 << 8;
     static final int BACKGROUND_TEXT = 1 << 9;
     static final int BRUSH = 1 << 10;
-    static final int PEN = 1 << 11;
+    static final int PEN  1 << 11;
     static final int NULL_BRUSH = 1 << 12;
     static final int NULL_PEN = 1 << 13;
     static final int DRAW_OFFSET = 1 << 14;
@@ -2047,7 +2047,7 @@
  *    <li>ERROR_GRAPHIC_DISPOSED - if the receiver has been disposed</li>
  * </ul>
  */
-	  public void drawString (String string, int x, int y, boolean isTransparent) {
+public void drawString (String string, int x, int y, boolean isTransparent) {
     if (handle == 0) SWT.error(SWT.ERROR_GRAPHIC_DISPOSED);
     if (string == null) SWT.error(SWT.ERROR_NULL_ARGUMENT);
 //    TCHAR buffer = new TCHAR (getCodePage(), string, false);
@@ -2056,14 +2056,14 @@
     char[] buffer = new char [length];
     string.getChars(0, length, buffer, 0);
     int gdipGraphics = data.gdipGraphics;
-	      if (gdipGraphics != 0) {
+	if (gdipGraphics != 0) {
         checkGC(FONT | FOREGROUND | (isTransparent ? 0 : BACKGROUND));
         PointF pt = new PointF();
         int format = Gdip.StringFormat_Clone(Gdip.StringFormat_GenericTypographic());
         int formatFlags = Gdip.StringFormat_GetFormatFlags(format) | Gdip.StringFormatFlagsMeasureTrailingSpaces;
         if ((data.style & SWT.MIRRORED) != 0) formatFlags |= Gdip.StringFormatFlagsDirectionRightToLeft;
         Gdip.StringFormat_SetFormatFlags(format, formatFlags);
-	          if (!isTransparent) {
+	    if (!isTransparent) {
             RectF bounds = new RectF();
             Gdip.Graphics_MeasureString(gdipGraphics, buffer, length, data.gdipFont, pt, format, bounds);
             Gdip.Graphics_FillRectangle(gdipGraphics, data.gdipBrush, x, y, Math.round(bounds.Width), Math.round(bounds.Height));
@@ -2087,8 +2087,8 @@
         pt.X = x;
         pt.Y = y;
         Gdip.Graphics_DrawString(gdipGraphics, buffer, length, data.gdipFont, pt, format, brush);
-	          if ((data.style & SWT.MIRRORED) != 0) {
-	              switch (Gdip.Brush_GetType(brush)) {
+	    if ((data.style & SWT.MIRRORED) != 0) {
+	        switch (Gdip.Brush_GetType(brush)) {
                 case Gdip.BrushTypeLinearGradient:
                     Gdip.LinearGradientBrush_ResetTransform(brush);
                     break;
@@ -2102,7 +2102,7 @@
         return;
     }
     int rop2 = 0;
-	      if (OS.IsWinCE) {
+	if (OS.IsWinCE) {
         rop2 = OS.SetROP2(handle, OS.R2_COPYPEN);
         OS.SetROP2(handle, rop2);
     } else {

@@ -1,6 +1,7 @@
 package ca.uwaterloo.ece.qhanam.slicer.test;
 
 import java.util.List;
+import java.util.LinkedList;
 
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -23,12 +24,15 @@ public class MethodVisitor extends ASTVisitor
 	private Slicer.Type type;
 	private List<Slicer.Options> options;
 	
+	public List<ASTNode> slice;
+	
 	public MethodVisitor(String methodName, int seedLine, Slicer.Direction direction, Slicer.Type type, List<Slicer.Options> options){
 		this.methodName = methodName;
 		this.seedLine = seedLine;
 		this.direction = direction;
 		this.type = type;
 		this.options = options;
+		this.slice = new LinkedList<ASTNode>();
 	}
 	
 	@Override
@@ -44,6 +48,8 @@ public class MethodVisitor extends ASTVisitor
 			Slicer slicer = new Slicer(direction, type, options);
 			List<ASTNode> statements = slicer.sliceMethod(node, seedLine);
 			if(statements == null) return false;
+			
+			this.slice = statements;
 			
 			System.out.println("Slice Results:");
 			for(ASTNode statement : statements){

@@ -126,7 +126,9 @@ public class SeedVisitor extends ASTVisitor {
 		for(Expression arg : args){
 			arg.accept(this);
 		}
-		node.getExpression().accept(smv);
+		
+		if(node.getExpression() != null)
+			node.getExpression().accept(smv);
 		
 		return false;
 	}

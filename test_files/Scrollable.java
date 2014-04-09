@@ -1,4 +1,4 @@
-public class Test {
+public class Scrollable {
 	public Rectangle computeTrim (int x, int y, int width, int height) {
 		checkWidget();
 		int border = 0;
