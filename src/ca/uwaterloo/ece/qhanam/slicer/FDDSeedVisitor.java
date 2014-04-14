@@ -19,11 +19,14 @@ import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.SwitchStatement;
 import org.eclipse.jdt.core.dom.SynchronizedStatement;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.WhileStatement;
 
 /**
- * Add any variables or fields that appear in the seed statement
- * to the list of variables that we need to check for.
+ * Add any variables or fields that are modified in the seed statement
+ * to the list of variables that we need to check for. This class is
+ * similar to BDDVisitor (except we are adding aliases instead of 
+ * checking for them).
  * @author qhanam
  */
 public class FDDSeedVisitor extends ASTVisitor {
@@ -41,246 +44,345 @@ public class FDDSeedVisitor extends ASTVisitor {
 	}
 	
 	/**
-	 * Add the variable to the node aliases.
+	 * If we are creating a conservative slice, we treat both
+	 * objects on which we call methods as well as arguments
+	 * for method calls as dependencies. This makes the
+	 * assumption that the method will modify the caller
+	 * and the arguments.
+	 * @param node
+	 * @return
 	 */
-	public boolean visit(QualifiedName node){
-		/* All we really need from this is the variable binding. */
-		IBinding binding = node.resolveBinding();
-		
-		if(binding == null){
-			if(!seedVariables.contains(node.getFullyQualifiedName()))
-				seedVariables.add(node.getFullyQualifiedName());
-		}
-		else if(binding instanceof IVariableBinding){
-			if(!seedVariables.contains(binding.getKey()))
-				seedVariables.add(binding.getKey());
-		}
-		
-		return false;
-	}
-	
-	/**
-	 * Add the variable to the node aliases.
-	 */
-	public boolean visit(FieldAccess node){
-		/* All we really need from this is the variable binding. */
-		IBinding binding = node.resolveFieldBinding();
-		
-		if(binding == null){
-			if(!seedVariables.contains(node.getName().toString()))
-				seedVariables.add(node.getName().toString());
-		}
-		else if(binding instanceof IVariableBinding){
-			if(!seedVariables.contains(binding.getKey()))
-				seedVariables.add(binding.getKey());
-		}
-		
-		return false;
-	}
-	
-	/**
-	 * Add the variable to the node aliases.
-	 */
-	public boolean visit(SimpleName node){
-		/* All we really need from this is the variable binding. */
-		IBinding binding = node.resolveBinding();
-		
-		/* Since we already intercept method calls, we can be sure
-		 * that this isn't part of a method call. */
-		if(binding == null){
-			if(!seedVariables.contains(node.getFullyQualifiedName()))
-				seedVariables.add(node.getFullyQualifiedName());
-		}
-		else if(binding instanceof IVariableBinding){
-			if(!seedVariables.contains(binding.getKey()))
-				seedVariables.add(binding.getKey());
-		}
-		
-		return false;
-	}
-	
-	/**
-	 * We only need to investigate the left hand side of an assignment.
-	 */
-	public boolean visit(Assignment node){
-		node.getLeftHandSide().accept(this);
-		return false;
-	}
-	
-	/**
-	 * Since we aren't doing an interprocedural analysis, we have two options
-	 * retarding method calls:
-	 * 	1. If we are being conservative, we need to investigate stuff from method 
-	 * 		invocations (parameters and callee) because the method might modify their values.
-	 * 	2. If we are being restrictive, we ignore method calls.
-	 * Default is restrictive.
-	 */
+	@Override 
 	public boolean visit(MethodInvocation node){
 		if(this.options.contains(Slicer.Options.CONSERVATIVE)){
-			SeedMethodVisitor smv = new SeedMethodVisitor(this.seedVariables);
-			List<Expression> args = node.arguments();
-			for(Expression arg : args){
-				arg.accept(this);
-			}
+			/* The expression part (eg. 'result.setFast(arg1, arg2)' expression = 'result' */
+			Expression expression = node.getExpression();
+			this.visitExpression(expression, new NoBindingsMethodVisitor(this.seedVariables));
 			
-			if(node.getExpression() != null)
-				node.getExpression().accept(smv);
+			/* The argument (eg. 'result.setFast(arg1, arg2)' arguments = {'arg1', 'arg2'}. */
+			List<Expression> arguments = node.arguments();
+			for(Expression argument : arguments){
+				this.visitExpression(argument, new NoBindingsAssignmentVisitor(this.seedVariables));
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * This is a data dependency if this is a declaration and the
+	 * variable being declared is in the right hand side of the
+	 * seed assignment expression.
+	 */
+	public boolean visit(SingleVariableDeclaration node){
+		IBinding binding = node.resolveBinding();
+		
+		if(binding == null){
+			this.seedVariables.add(node.getName().getFullyQualifiedName());		
+		}
+		else if(binding instanceof IVariableBinding){
+			this.seedVariables.add(binding.getKey());
 		}
 		
 		return false;
 	}
 	
 	/**
-	 * We want to track the variables from the expression only.
+	 * This is a data dependency if this is a declaration and the
+	 * variable being declared is in the right hand side of the
+	 * seed assignment expression.
+	 */
+	public boolean visit(VariableDeclarationFragment node){
+		IBinding binding = node.resolveBinding();
+		
+		if(binding == null){
+			this.seedVariables.add(node.getName().getFullyQualifiedName());
+		}
+		else if(binding instanceof IVariableBinding){
+			this.seedVariables.add(binding.getKey());
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * This is a data dependency if this is an assignment and the
+	 * variable being assigned is in the right hand side of the
+	 * seed assignment expression.
+	 * 
+	 * We only handle cases where the left hand side of the
+	 * assignment is a SimpleName, FieldAccess or QualifiedName.
+	 */
+	public boolean visit(Assignment node){
+		Expression lhs = node.getLeftHandSide();
+		this.visitExpression(lhs, new NoBindingsAssignmentVisitor(this.seedVariables));
+		return false;
+	}
+	
+	/**
+	 * We don't really need anything in particular from this statement,
+	 * but since it has an expression and a body, we only want to 
+	 * investigate the expression part to determine if it needs to
+	 * be in the slice.
 	 */
 	public boolean visit(IfStatement node){
-		/* Visit the expression part. */
-		node.getExpression().accept(this);
-		/* Don't visit the children. */
-		return false;
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
+			/* Visit the expression part. */
+			node.getExpression().accept(this);
+			/* Don't visit the children. */
+			return false;
+		}
+		else return true;
 	}
 	
 	/**
-	 * We want to track the variables from the expression only.
-	 * 
-	 * TODO: Are we handling this statement type properly?
+	 * We don't really need anything in particular from this statement,
+	 * but since it has an expression and a body, we only want to 
+	 * investigate the expression part to determine if it needs to
+	 * be in the slice.
 	 */
 	public boolean visit(DoStatement node){
-		/* Visit the expression part. */
-		node.getExpression().accept(this);
-		/* Don't visit the children. */
-		return false;
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
+			/* Visit the expression part. */
+			node.getExpression().accept(this);
+			/* Don't visit the children. */
+			return false;
+		}
+		else return true;
 	}
 	
 	/**
-	 * We want to track the variables from the expression only.
+	 * We don't really need anything in particular from this statement,
+	 * but since it has an expression and a body, we only want to 
+	 * investigate the expression part to determine if it needs to
+	 * be in the slice.
 	 */
 	public boolean visit(EnhancedForStatement node){
-		/* Visit the expression part. */
-		node.getExpression().accept(this);
-		/* Don't visit the children. */
-		return false;
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
+			/* Visit the expression part. */
+			node.getExpression().accept(this);
+			/* Don't visit the children. */
+			return false;
+		}
+		else return true;
 	}
 	
 	/**
-	 * We want to track the variables from the expression only.
+	 * We don't really need anything in particular from this statement,
+	 * but since it has an expression and a body, we only want to 
+	 * investigate the expression part to determine if it needs to
+	 * be in the slice.
 	 */
 	public boolean visit(ForStatement node){
-		/* Visit the expression part. */
-		node.getExpression().accept(this);
-		List<Expression> initializers = node.initializers();
-		for(Expression initializer : initializers){
-			initializer.accept(this);
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
+			/* Visit the expression part. */
+			node.getExpression().accept(this);
+			List<Expression> initializers = node.initializers();
+			for(Expression initializer : initializers){
+				initializer.accept(this);
+			}
+			/* Don't visit the children. */
+			return false;
 		}
-		/* Don't visit the children. */
-		return false;
+		else return true;
 	}
 
 	/**
-	 * We want to track the variables from the expression only.
+	 * We don't really need anything in particular from this statement,
+	 * but since it has an expression and a body, we only want to 
+	 * investigate the expression part to determine if it needs to
+	 * be in the slice.
 	 */
 	public boolean visit(SwitchStatement node){
-		/* Visit the expression part. */
-		node.getExpression().accept(this);
-		/* Don't visit the children. */
-		return false;
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
+			/* Visit the expression part. */
+			node.getExpression().accept(this);
+			/* Don't visit the children. */
+			return false;
+		}
+		else return true;
 	}
 	
 
 	/**
-	 * We want to track the variables from the expression only.
+	 * We don't really need anything in particular from this statement,
+	 * but since it has an expression and a body, we only want to 
+	 * investigate the expression part to determine if it needs to
+	 * be in the slice.
 	 */
 	public boolean visit(SynchronizedStatement node){
-		/* Visit the expression part. */
-		node.getExpression().accept(this);
-		/* Don't visit the children. */
-		return false;	
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
+			/* Visit the expression part. */
+			node.getExpression().accept(this);
+			/* Don't visit the children. */
+			return false;
+		}
+		else return true;
 	}
 	
 	/**
-	 * We want to track the variables from the expression only.
+	 * We don't really need anything in particular from this statement,
+	 * but since it has an expression and a body, we only want to 
+	 * investigate the expression part to determine if it needs to
+	 * be in the slice.
 	 */
 	public boolean visit(WhileStatement node){
-		/* Visit the expression part. */
-		node.getExpression().accept(this);
-		/* Don't visit the children. */
-		return false;
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
+			/* Visit the expression part. */
+			node.getExpression().accept(this);
+			/* Don't visit the children. */
+			return false;
+		}
+		else return true;
 	}
 	
 	/**
-	 * For now, we will sandbox MethodInvocation statements for retrieving
-	 * variables from the seed statements. MethodInvocations are a bit tricky
-	 * because we don't want to store methods... just object bindings or names.
-	 * @author qhanam
-	 *
+	 * Vists an expression and checks for aliases.
+	 * @param node
+	 * @return
 	 */
-	private class SeedMethodVisitor extends DependencyVisitor{
-		
-		//List<String> seedVariables;
-		
-		public SeedMethodVisitor(List<String> seedVariables){
-			//this.seedVariables = seedVariables;
-		}
-		
-		/**
-		 * Add the variable to the node aliases.
-		 */
-		public boolean visit(QualifiedName node){
+	public void visitExpression(Expression node, ASTVisitor nbv){
+		if(node instanceof FieldAccess){
 			/* All we really need from this is the variable binding. */
-			IBinding binding = node.resolveBinding();
+			IBinding binding = ((FieldAccess) node).resolveFieldBinding();
 			
+			/* Make sure this is a variable.
+			 * If we are just analyzing one source file,
+			 * we won't have binding info... so do our 
+			 * best effort at matching variables. */
 			if(binding == null){
-				if(!seedVariables.contains(node.getFullyQualifiedName()))
-					seedVariables.add(node.getFullyQualifiedName());
+				node.accept(nbv);
 			}
 			else if(binding instanceof IVariableBinding){
-				if(!seedVariables.contains(binding.getKey()))
-					seedVariables.add(binding.getKey());
+				this.seedVariables.add(binding.getKey());
 			}
-			
-			return false;
 		}
-		
-		/**
-		 * Add the variable to the node aliases.
-		 */
-		public boolean visit(FieldAccess node){
-			/* All we really need from this is the variable binding. */
-			IBinding binding = node.resolveFieldBinding();
+		else if(node instanceof QualifiedName){
+			IBinding binding = ((QualifiedName)node).resolveBinding();
 			
 			if(binding == null){
-				if(!seedVariables.contains(node.getName().toString()))
-					seedVariables.add(node.getName().toString());
+				node.accept(nbv);
 			}
 			else if(binding instanceof IVariableBinding){
-				if(!seedVariables.contains(binding.getKey()))
-					seedVariables.add(binding.getKey());
+				this.seedVariables.add(binding.getKey());
 			}
+		}
+		else if(node instanceof SimpleName){
+			IBinding binding = ((SimpleName)node).resolveBinding();
 			
-			return false;
+			if(binding == null){
+				node.accept(nbv);
+			}
+			else if(binding instanceof IVariableBinding){
+				this.seedVariables.add(binding.getKey());
+			}
+		}
+	}
+	
+	/**
+	 * A class to find matching fields/variables in expressions when
+	 * we don't have field/variable bindings.
+	 */
+	private class NoBindingsAssignmentVisitor extends ASTVisitor {
+		
+		/* The list of all possible variables and their aliases at this point in the CFG. */
+		private List<String> seedVariables;
+		
+		/**
+		 * Create DataDependencyVisitor
+		 * @param 
+		 */
+		public NoBindingsAssignmentVisitor(List<String> seedVariables){
+			super();
+			this.seedVariables = seedVariables;
 		}
 		
 		/**
-		 * Add the variable to the node aliases.
+		 * Add this variable to the seed variable list if not already present.
 		 */
 		public boolean visit(SimpleName node){
-			/* All we really need from this is the variable binding. */
-			IBinding binding = node.resolveBinding();
-			
-			if(binding == null){
-				if(node.getParent() instanceof MethodInvocation){
-					MethodInvocation methodInv = (MethodInvocation) node.getParent();
-					if(methodInv.getName().equals(node.getFullyQualifiedName())) return false;
+			if(!(node.getParent() instanceof MethodInvocation)){
+				if(this.seedVariables.contains(node.getFullyQualifiedName())){
+					this.seedVariables.add(node.getFullyQualifiedName());	// Store this variable
+					return false; // We no longer need to visit the children.
 				}
-				if(!seedVariables.contains(node.getFullyQualifiedName()))
-					seedVariables.add(node.getFullyQualifiedName());
 			}
-			else if(binding instanceof IVariableBinding){
-				if(!seedVariables.contains(binding.getKey()))
-					seedVariables.add(binding.getKey());
+			return true;
+		}
+		
+		/**
+		 * Add this variable to the seed variable list if not already present.
+		 */
+		public boolean visit(QualifiedName node){
+			if(!(node.getParent() instanceof MethodInvocation)){
+				if(this.seedVariables.contains(node.getFullyQualifiedName())){
+					this.seedVariables.add(node.getFullyQualifiedName());
+					return false;
+				}
 			}
-			
-			return false;
+			return true;
+		}
+		
+		/**
+		 * Add this variable to the seed variable list if not already present.
+		 */
+		public boolean visit(FieldAccess node){
+			if(this.seedVariables.contains(node.getName().toString())){
+				this.seedVariables.add(node.getName().toString());
+				return false;
+			}
+			return true;
+		}
+	}
+	
+	/**
+	 * A class to find matching fields/variables in method expressions when
+	 * we don't have field/variable bindings.
+	 */
+	private class NoBindingsMethodVisitor extends ASTVisitor {
+		
+		/* The list of all possible variables and their aliases at this point in the CFG. */
+		private List<String> seedVariables;
+		
+		/**
+		 * Create DataDependencyVisitor
+		 * @param 
+		 */
+		public NoBindingsMethodVisitor(List<String> seedVariables){
+			super();
+			this.seedVariables = seedVariables;
+		}
+		
+		/**
+		 * Add this variable to the seed variable list if not already present.
+		 */
+		public boolean visit(SimpleName node){
+			if(!this.seedVariables.contains(node.getFullyQualifiedName())){
+				this.seedVariables.add(node.getFullyQualifiedName());	// Store this variable
+				return false; // We no longer need to visit the children.
+			}
+			return true;
+		}
+		
+		/**
+		 * Add this variable to the seed variable list if not already present.
+		 */
+		public boolean visit(QualifiedName node){
+			if(!this.seedVariables.contains(node.getFullyQualifiedName())){
+				this.seedVariables.add(node.getFullyQualifiedName());
+				return false;
+			}
+			return true;
+		}
+		
+		/**
+		 * Add this variable to the seed variable list if not already present.
+		 */
+		public boolean visit(FieldAccess node){
+			if(this.seedVariables.contains(node.getName().toString())){
+				this.seedVariables.add(node.getName().toString());
+				return false;
+			}
+			return true;
 		}
 	}
 }
