@@ -143,9 +143,17 @@ public class Slicer
 				if(this.type == Slicer.Type.CONTROL){
 					if(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine){
 						DependencyVisitor cdv;
-						if(this.direction == Slicer.Direction.BACKWARDS) cdv = new ControlDependencyVisitor(this.options, seed);
-						else throw new Exception("FORWARDS direction not yet supported for CONTROL slicer.");
-						statement.accept(cdv);
+						if(this.direction == Slicer.Direction.BACKWARDS) {
+							cdv = new BCDVisitor(this.options, seed);
+							statement.accept(cdv);
+						}
+						else if(this.direction == Slicer.Direction.FORWARDS) {
+							FCDVisitor fcdv = new FCDVisitor(this.options, Slicer.getStatement(seed));
+							fcdv.isControlDependency(statement);
+							cdv = fcdv;
+						}
+						else throw new Exception("Slicer only supports FORWARDS or BACKWARDS directions.");
+						
 						if(cdv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
 					}
 				}

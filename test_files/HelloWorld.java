@@ -20,6 +20,29 @@ public class HelloWorld {
 		else{
 			a = b;
 		}
+		a = 7;
+	}
+	
+	public void doNothing(){
+		a = 5;
+		if(a > 0) return;
+		a = 0;
+		b = 0;
+		c = 0;
+		b = a + 1;
+		c = b + 1;
 	}
 
+	public void nestedControl(){
+		int a = 100;
+		int b = 1;
+		if(b > 0 & a > 0){
+			while(a > 0){
+				for(int i = 0; i < 10; i++){
+					a =- b;
+				}
+			}
+		}
+	}
+	
 }

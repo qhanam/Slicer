@@ -33,7 +33,7 @@ import org.eclipse.jdt.core.dom.ReturnStatement;
  * the given list.
  * @author qhanam
  */
-public class ControlDependencyVisitor extends DependencyVisitor {
+public class BCDVisitor extends DependencyVisitor {
 	
 	/* The slicer options. */
 	private List<Slicer.Options> options;
@@ -45,7 +45,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 	 * Create DataDependencyVisitor
 	 * @param 
 	 */
-	public ControlDependencyVisitor(List<Slicer.Options> options, ASTNode seed){
+	public BCDVisitor(List<Slicer.Options> options, ASTNode seed){
 		super();
 		this.options = options;
 		this.seed = seed;
@@ -120,7 +120,7 @@ public class ControlDependencyVisitor extends DependencyVisitor {
 		
 		/* If this conditional statement contains the seed statement, then
 		 * it is a control dependency */
-		if(ControlDependencyVisitor.contains(node, this.seed)){
+		if(BCDVisitor.contains(node, this.seed)){
 			this.result = true;
 			return;
 		}
