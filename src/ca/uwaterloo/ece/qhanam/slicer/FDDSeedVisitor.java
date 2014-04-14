@@ -306,7 +306,7 @@ public class FDDSeedVisitor extends ASTVisitor {
 		 */
 		public boolean visit(SimpleName node){
 			if(!(node.getParent() instanceof MethodInvocation)){
-				if(this.seedVariables.contains(node.getFullyQualifiedName())){
+				if(!this.seedVariables.contains(node.getFullyQualifiedName())){
 					this.seedVariables.add(node.getFullyQualifiedName());	// Store this variable
 					return false; // We no longer need to visit the children.
 				}
@@ -319,7 +319,7 @@ public class FDDSeedVisitor extends ASTVisitor {
 		 */
 		public boolean visit(QualifiedName node){
 			if(!(node.getParent() instanceof MethodInvocation)){
-				if(this.seedVariables.contains(node.getFullyQualifiedName())){
+				if(!this.seedVariables.contains(node.getFullyQualifiedName())){
 					this.seedVariables.add(node.getFullyQualifiedName());
 					return false;
 				}
@@ -331,7 +331,7 @@ public class FDDSeedVisitor extends ASTVisitor {
 		 * Add this variable to the seed variable list if not already present.
 		 */
 		public boolean visit(FieldAccess node){
-			if(this.seedVariables.contains(node.getName().toString())){
+			if(!this.seedVariables.contains(node.getName().toString())){
 				this.seedVariables.add(node.getName().toString());
 				return false;
 			}
@@ -383,7 +383,7 @@ public class FDDSeedVisitor extends ASTVisitor {
 		 * Add this variable to the seed variable list if not already present.
 		 */
 		public boolean visit(FieldAccess node){
-			if(this.seedVariables.contains(node.getName().toString())){
+			if(!this.seedVariables.contains(node.getName().toString())){
 				this.seedVariables.add(node.getName().toString());
 				return false;
 			}

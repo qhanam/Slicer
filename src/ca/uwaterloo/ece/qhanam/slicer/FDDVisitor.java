@@ -62,15 +62,19 @@ public class FDDVisitor extends DependencyVisitor {
 		IBinding binding = node.resolveBinding();
 		
 		if(binding == null){
-			if(this.aliases.contains(node.getFullyQualifiedName()))
+			if(this.aliases.contains(node.getFullyQualifiedName())){
 				this.result = true;
+				return false;
+			}
 		}
 		else if(binding instanceof IVariableBinding){
-			if(this.aliases.contains(binding.getKey()))
+			if(this.aliases.contains(binding.getKey())){
 				this.result = true;
+				return false;
+			}
 		}
 		
-		return false;
+		return true;
 	}
 	
 	/**
@@ -81,15 +85,20 @@ public class FDDVisitor extends DependencyVisitor {
 		IBinding binding = node.resolveFieldBinding();
 		
 		if(binding == null){
-			if(this.aliases.contains(node.getName().toString()))
-				return true;
+			if(this.aliases.contains(node.getName().toString())){
+				this.result = true;
+				return false;
+			}
+				
 		}
 		else if(binding instanceof IVariableBinding){
-			if(this.aliases.contains(binding.getKey()))
-				return true;
+			if(this.aliases.contains(binding.getKey())){
+				this.result = true;
+				return false;
+			}
 		}
 		
-		return false;
+		return true;
 	}
 	
 	/**
@@ -102,15 +111,19 @@ public class FDDVisitor extends DependencyVisitor {
 		/* Since we already intercept method calls, we can be sure
 		 * that this isn't part of a method call. */
 		if(binding == null){
-			if(this.aliases.contains(node.getFullyQualifiedName()))
-				return true;
+			if(this.aliases.contains(node.getFullyQualifiedName())){
+				this.result = true;
+				return false;
+			}
 		}
 		else if(binding instanceof IVariableBinding){
-			if(this.aliases.contains(binding.getKey()))
-				return true;
+			if(this.aliases.contains(binding.getKey())){
+				this.result = true;
+				return false;
+			}
 		}
 		
-		return false;
+		return true;
 	}
 	
 	/**

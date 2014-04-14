@@ -63,7 +63,7 @@ public class Slicer
 	 * @param seedLine The line number of the seed statement.
 	 * @return
 	 */
-	public List<ASTNode> sliceMethod(MethodDeclaration d, int seedLine) {
+	public List<ASTNode> sliceMethod(MethodDeclaration d, int seedLine) throws Exception{
 		Hashtable<Integer,ASTNode> statementPairs = new Hashtable<Integer,ASTNode>();
 		LinkedList<String> seedVariables = null;
 		
@@ -100,14 +100,14 @@ public class Slicer
 	 * @return
 	 */
 	private LinkedList<ASTNode> computeSlice(ICFGNode<ASTNode> cfgNode, LinkedList<String> seedVariables, 
-												Hashtable<Integer, ASTNode> statementPairs, int seedLine){
+												Hashtable<Integer, ASTNode> statementPairs, int seedLine) throws Exception{
 		LinkedList<ASTNode> statements = new LinkedList<ASTNode>();
 		HashSet<ICFGNode<ASTNode>> visited = new HashSet<ICFGNode<ASTNode>>();
 		Stack<ICFGNode<ASTNode>> stack = new Stack<ICFGNode<ASTNode>>();
 		ASTNode seed = cfgNode.getASTNode();
 		
 		/* Start by checking the method parameters for data dependencies. */
-		if(this.type == Slicer.Type.DATA){
+		if(this.type == Slicer.Type.DATA && this.direction == Slicer.Direction.BACKWARDS){
 			MethodDeclaration method = Slicer.getMethod(cfgNode.getASTNode());
 			if(method != null){
 				List<SingleVariableDeclaration> parameters = method.parameters();
@@ -142,14 +142,19 @@ public class Slicer
 			{
 				if(this.type == Slicer.Type.CONTROL){
 					if(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine){
-						DependencyVisitor cdv = new ControlDependencyVisitor(this.options, seed);
+						DependencyVisitor cdv;
+						if(this.direction == Slicer.Direction.BACKWARDS) cdv = new ControlDependencyVisitor(this.options, seed);
+						else throw new Exception("FORWARDS direction not yet supported for CONTROL slicer.");
 						statement.accept(cdv);
 						if(cdv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
 					}
 				}
 				else if(this.type == Slicer.Type.DATA){
 					if(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine){
-						DependencyVisitor ddv = new BDDVisitor(seedVariables, this.options);
+						DependencyVisitor ddv;
+						if(this.direction == Slicer.Direction.BACKWARDS) ddv = new BDDVisitor(seedVariables, this.options);
+						else if(this.direction == Slicer.Direction.FORWARDS) ddv = new FDDVisitor(seedVariables, this.options);
+						else throw new Exception("Slicer only supports FORWARDS or BACKWARDS directions.");
 						statement.accept(ddv);
 						if(ddv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
 					}
@@ -158,7 +163,7 @@ public class Slicer
 			
 			if(this.direction == Slicer.Direction.FORWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getOutputs();
 			else if(this.direction == Slicer.Direction.BACKWARDS) neighbours = (Set<ICFGEdge<ASTNode>>) cfgNode.getInputs();
-			else return null;
+			else throw new Exception("Slicer only supports FORWARDS or BACKWARDS directions.");
 			
 			for(ICFGEdge<ASTNode> edge : neighbours){
 				if(this.direction == Slicer.Direction.FORWARDS && !visited.contains(edge.getSink())){
@@ -189,12 +194,15 @@ public class Slicer
 	 * @param cfgNode
 	 * @return
 	 */
-	public LinkedList<String> getSeedVariables(ICFGNode<ASTNode> cfgNode){
+	public LinkedList<String> getSeedVariables(ICFGNode<ASTNode> cfgNode) throws Exception{
 		LinkedList<String> seedVariables = new LinkedList<String>();
 		
 		/* Extract the variables from the seed statement. */
 		Statement statement = Slicer.getStatement(cfgNode.getASTNode());
-		BDDSeedVisitor seedVisitor = new BDDSeedVisitor(seedVariables, this.options);
+		ASTVisitor seedVisitor;
+		if(this.direction == Slicer.Direction.BACKWARDS) seedVisitor = new BDDSeedVisitor(seedVariables, this.options);
+		else if(this.direction == Slicer.Direction.FORWARDS) seedVisitor = new FDDSeedVisitor(seedVariables, this.options);
+		else throw new Exception("Slicer only supports FORWARDS or BACKWARDS directions.");
 		statement.accept(seedVisitor);
 		
 		return seedVariables;

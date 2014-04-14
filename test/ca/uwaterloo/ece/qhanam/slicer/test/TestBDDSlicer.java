@@ -18,6 +18,9 @@ import junit.framework.TestCase;
 
 /**
  * Tests the backwards data dependency slicer.
+ * 
+ * For now we just use a loose input space partitioning to measure coverage.
+ * 
  * @author qhanam
  *
  */

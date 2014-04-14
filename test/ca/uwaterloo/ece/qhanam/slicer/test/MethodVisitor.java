@@ -46,7 +46,14 @@ public class MethodVisitor extends ASTVisitor
 		 * call the analysis. */
 		if(node.getName().toString().equals(this.methodName)){
 			Slicer slicer = new Slicer(direction, type, options);
-			List<ASTNode> statements = slicer.sliceMethod(node, seedLine);
+			List<ASTNode> statements;
+			try{ 
+				statements = slicer.sliceMethod(node, seedLine);
+			}
+			catch(Exception e){
+				System.out.println(e.getMessage());
+				return false;
+			}
 			if(statements == null) return false;
 			
 			this.slice = statements;
