@@ -16,43 +16,15 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import ca.uwaterloo.ece.qhanam.slicer.Slicer;
 import junit.framework.TestCase;
 
-public class TestSlicer extends TestCase {
+/**
+ * Tests the backwards data dependency (conservative mode) slicer.
+ * @author qhanam
+ *
+ */
+public abstract class TestSlicer extends TestCase {
 	
-	@Test
-	public void testDataDeps(){
-		runTest("test_files/Test1.java", "drawLine", 7,
-				new int[]{6}, new int[]{4,2});
-	}
-	
-	@Test
-	public void testControlDeps(){
-		runTest("test_files/GC.java", "drawString", 2112,
-				new int[]{2055,2059}, new int[]{2030});
-	}
-	
-	@Test
-	public void testIfWhileNestedConditionals(){
-		runTest("test_files/Test2.java", "getLaunchConfigurations", 11,
-				new int[]{10,6}, new int[]{7,4});
-	}
-	
-	@Test
-	public void testWhileLoopSeed(){
-		runTest("test_files/Test2.java", "getLaunchConfigurations", 6,
-				new int[]{}, new int[]{3});
-	}
-	
-	@Test
-	public void testNoExpressionMethod(){
-		runTest("test_files/drawString-1.java", "drawString", 10,
-				new int[]{9,6}, new int[]{2});
-	}
-	
-	@Test
-	public void testAdditionAssignment(){
-		runTest("test_files/Scrollable.java", "computeTrim", 7,
-				new int[]{}, new int[]{4,5});
-	}
+	protected abstract Slicer.Direction getDirection();
+	protected abstract Slicer.Type getType();
 	
 	/**
 	 * Tests the control and data dependency slices.
@@ -60,13 +32,11 @@ public class TestSlicer extends TestCase {
 	 * @param method
 	 * @param seed
 	 * @param controlExpected
-	 * @param dataExpected
+	 * @param expected
 	 */
-	public void runTest(String path, String method, int seed, int[] controlExpected, int[] dataExpected){
-		List<ASTNode> controlActual = getControlSlice(path, method, seed);
-		List<ASTNode> dataActual = getDataSlice(path, method, seed);
-		checkSlice(controlActual, controlExpected);
-		checkSlice(dataActual, dataExpected);
+	public void runTest(String path, String method, int seed, int[] expected, Slicer.Options[] options){
+		List<ASTNode> dataActual = getSlice(path, method, seed, options);
+		checkSlice(dataActual, expected);
 	}
 	
 	/**
@@ -87,40 +57,16 @@ public class TestSlicer extends TestCase {
 	}
 	
 	/**
-	 * Generate a control dependency slice.
-	 * @param path
-	 * @param method
-	 * @param seedLine
-	 */
-	public List<ASTNode> getControlSlice(String path, String method, int seedLine){
-		CompilationUnit cu = SampleUse.getAST(path);
-		List<Slicer.Options> options;
-		MethodVisitor methodVisitor;
-
-		options = new LinkedList<Slicer.Options>();
-		options.add(Slicer.Options.OMIT_SEED);
-		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.CONTROL, options);
-		cu.accept(methodVisitor);
-		
-		return methodVisitor.slice;
-	}
-	
-	/**
 	 * Generate a data dependency slice.
 	 * @param path
 	 * @param method
 	 * @param seedLine
 	 */
-	public List<ASTNode> getDataSlice(String path, String method, int seedLine){
+	public List<ASTNode> getSlice(String path, String method, int seedLine, Slicer.Options[] options){
 		CompilationUnit cu = SampleUse.getAST(path);
-		List<Slicer.Options> options;
-		MethodVisitor methodVisitor;
-
-		options = new LinkedList<Slicer.Options>();
-		options.add(Slicer.Options.CONTROL_EXPRESSIONS);
-		options.add(Slicer.Options.OMIT_SEED);
+		MethodVisitor methodVisitor;;
 		
-		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.DATA, options);
+		methodVisitor = new MethodVisitor(method, seedLine, this.getDirection(), this.getType(), options);
 		cu.accept(methodVisitor);
 		
 		return methodVisitor.slice;

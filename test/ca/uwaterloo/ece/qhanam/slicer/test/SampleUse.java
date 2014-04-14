@@ -38,9 +38,9 @@ public class SampleUse {
 		/* *********
 		 * Sample run of 1-0.java
 		 * *********/
-		String path = "test_files/drawString-1.java";
-		String method = "drawString";
-		int seedLine = 10;
+		String path = "test_files/FastTreeMap.java";
+		String method = "clone";
+		int seedLine = 225;
 		
 		CompilationUnit cu = SampleUse.getAST(path);
 		List<Slicer.Options> options;
@@ -50,22 +50,20 @@ public class SampleUse {
 		 * Control slice
 		 * *********/
 		
-		System.out.println("CONTROL SLICE ***********");
-		options = new LinkedList<Slicer.Options>();
-		options.add(Slicer.Options.OMIT_SEED);
-		
-		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.CONTROL, options);
+		System.out.println("CONTROL SLICE ***********");		
+		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.CONTROL, 
+				Slicer.Options.OMIT_SEED);
 		cu.accept(methodVisitor);
 		
 		/* *********
 		 * Data Slice
 		 * *********/
-		System.out.println("DATA SLICE ***********");
-		options = new LinkedList<Slicer.Options>();
-		options.add(Slicer.Options.CONTROL_EXPRESSIONS);
-		options.add(Slicer.Options.OMIT_SEED);
 		
-		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.DATA, options);
+		System.out.println("DATA SLICE ***********");		
+		methodVisitor = new MethodVisitor(method, seedLine, Slicer.Direction.BACKWARDS, Slicer.Type.DATA, 
+				Slicer.Options.CONTROL_EXPRESSIONS_ONLY, 
+				Slicer.Options.OMIT_SEED, 
+				Slicer.Options.CONSERVATIVE);
 		cu.accept(methodVisitor);
 	}
 	

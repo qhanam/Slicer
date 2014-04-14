@@ -47,11 +47,10 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 	private static final String METHOD = "hashCode";
 	private static final Slicer.Direction DIRECTION = Slicer.Direction.BACKWARDS;
 	private static final Slicer.Type TYPE = Slicer.Type.CONTROL;
-	private List<Slicer.Options> options;
+	private Slicer.Options[] options;
 	
 	public CSlicer() { 
-		this.options = new LinkedList<Slicer.Options>();
-		this.options.add(Slicer.Options.CONTROL_EXPRESSIONS);
+		this.options = new Slicer.Options[]{Slicer.Options.CONTROL_EXPRESSIONS_ONLY};
 	}
 	
 	@Override

@@ -26,16 +26,18 @@ import org.eclipse.jdt.core.dom.WhileStatement;
  * to the list of variables that we need to check for.
  * @author qhanam
  */
-public class SeedVisitor extends ASTVisitor {
+public class BDDSeedVisitor extends ASTVisitor {
 	LinkedList<String> seedVariables;
+	List<Slicer.Options> options;
 	
 	/**
 	 * Create a SeedVisitor
 	 * @param seedVariables The list that SeedVisitor will fill with the seed variables.
 	 */
-	public SeedVisitor(LinkedList<String> seedVariables){
+	public BDDSeedVisitor(LinkedList<String> seedVariables, List<Slicer.Options> options){
 		super();
 		this.seedVariables = seedVariables;
+		this.options = options;
 	}
 	
 	/**
@@ -117,12 +119,8 @@ public class SeedVisitor extends ASTVisitor {
 	 * We visit the argument expressions, but not the method call itself.
 	 */
 	public boolean visit(MethodInvocation node){
-		// TODO: We also need to get the object that the method is being invoked on...
-		// 	We might need to hack this a bit...
-		//	What if we visit the children, but only record a variable if it is not
-		//	the method call of the parent MethodInvocation ?
 		SeedMethodVisitor smv = new SeedMethodVisitor(this.seedVariables);
-		List<Expression> args = node.arguments();
+ 		List<Expression> args = node.arguments();
 		for(Expression arg : args){
 			arg.accept(this);
 		}
@@ -219,11 +217,7 @@ public class SeedVisitor extends ASTVisitor {
 	 */
 	private class SeedMethodVisitor extends DependencyVisitor{
 		
-		//List<String> seedVariables;
-		
-		public SeedMethodVisitor(List<String> seedVariables){
-			//this.seedVariables = seedVariables;
-		}
+		public SeedMethodVisitor(List<String> seedVariables){ }
 		
 		/**
 		 * Add the variable to the node aliases.

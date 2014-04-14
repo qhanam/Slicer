@@ -24,6 +24,17 @@ import edu.cmu.cs.crystal.cfg.eclipse.EclipseCFG;
 import edu.cmu.cs.crystal.cfg.ICFGNode;
 import edu.cmu.cs.crystal.cfg.ICFGEdge;
 
+/**
+ * Creates a program slice based on data or control dependencies.
+ * 
+ * Default Options (see Slicer.Options enumeration for a description):
+ * 	CONTROL_BODY
+ * 	RESTRICTIVE
+ * 	INCLUDE_SEED
+ * 
+ * @author qhanam
+ *
+ */
 public class Slicer
 {
 	private Type type;
@@ -36,11 +47,14 @@ public class Slicer
 	 * @param direction FORWARDS, BACKWARDS or BOTH
 	 * @param type The type of dependencies to track (CONTROL or DATA). Data dependencies subsume control dependencies.
 	 */
-	public Slicer(Direction direction, Type type, List<Options> options) { 
+	public Slicer(Direction direction, Type type, Slicer.Options... options) { 
 		this.statements = new LinkedList<ASTNode>();
 		this.direction = direction;
 		this.type = type;
-		this.options = options;
+		this.options = new LinkedList<Options> ();
+		for(int i = 0; i < options.length; i++){
+			this.options.add(options[i]);
+		}
 	}
 
 	/**
@@ -66,7 +80,7 @@ public class Slicer
 		if(cfgNode == null) return null;
 		
 		/* Get the list of variables in the seed node. */
-		if(this.type == Slicer.Type.DATA) seedVariables = Slicer.getSeedVariables(cfgNode);
+		if(this.type == Slicer.Type.DATA) seedVariables = this.getSeedVariables(cfgNode);
 		
 		/* Since this is the seed, we automatically add it to the slice. (needed here for 
 		 * right-hand assignment slicing. */
@@ -135,7 +149,7 @@ public class Slicer
 				}
 				else if(this.type == Slicer.Type.DATA){
 					if(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine){
-						DependencyVisitor ddv = new DataDependencyVisitor(seedVariables, this.options);
+						DependencyVisitor ddv = new BDDVisitor(seedVariables, this.options);
 						statement.accept(ddv);
 						if(ddv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
 					}
@@ -169,18 +183,18 @@ public class Slicer
 	/**
 	 * Returns a list of variables associated with the seed statement.
 	 * 
-	 * TODO: We're only interested in the variables on the right hand
+	 * We're only interested in the variables on the right hand
 	 * side of an assignment expression...
 	 * 
 	 * @param cfgNode
 	 * @return
 	 */
-	public static LinkedList<String> getSeedVariables(ICFGNode<ASTNode> cfgNode){
+	public LinkedList<String> getSeedVariables(ICFGNode<ASTNode> cfgNode){
 		LinkedList<String> seedVariables = new LinkedList<String>();
 		
 		/* Extract the variables from the seed statement. */
 		Statement statement = Slicer.getStatement(cfgNode.getASTNode());
-		SeedVisitor seedVisitor = new SeedVisitor(seedVariables);
+		BDDSeedVisitor seedVisitor = new BDDSeedVisitor(seedVariables, this.options);
 		statement.accept(seedVisitor);
 		
 		return seedVariables;
@@ -310,7 +324,7 @@ public class Slicer
 	}
 	
 	public enum Direction {
-	    BACKWARDS, FORWARDS, BOTH
+	    BACKWARDS, FORWARDS
 	}
 	
 	public enum Type{
@@ -318,8 +332,34 @@ public class Slicer
 	}
 	
 	public enum Options { 
-		NONE, 
-		CONTROL_EXPRESSIONS,	// For control expressions (eg. if, for, while statements), don't look in the body for data dependencies
-		OMIT_SEED				// Leave the seed statement out of the slice.
+		/**
+		 * For control expressions (eg. if, for, while statements), include the body for data dependencies
+		 */
+		CONTROL_BODY,
+		
+		/**
+		 * For control expressions (eg. if, for, while statements), don't look in the body for data dependencies
+		 */
+		CONTROL_EXPRESSIONS_ONLY,
+		
+		/**
+		 * Leave the seed statement out of the slice.
+		 */
+		INCLUDE_SEED,
+		
+		/**
+		 * Leave the seed statement out of the slice.
+		 */
+		OMIT_SEED,
+		
+		/**
+		 * Perform a conservative slice (ie. include method calls in data dependencies)
+		 */
+		CONSERVATIVE,
+		
+		/**
+		 * Perform a restrictive slice (ie. do not include method calls in data dependencies)
+		 */
+		RESTRICTIVE
 	}
 }

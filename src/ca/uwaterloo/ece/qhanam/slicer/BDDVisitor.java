@@ -35,7 +35,7 @@ import org.eclipse.jdt.core.dom.QualifiedName;
  * 
  * @author qhanam
  */
-public class DataDependencyVisitor extends DependencyVisitor {
+public class BDDVisitor extends DependencyVisitor {
 	
 	/* The list of all possible variables and their aliases at this point in the CFG. */
 	protected LinkedList<String> aliases;
@@ -47,10 +47,36 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * Create DataDependencyVisitor
 	 * @param 
 	 */
-	public DataDependencyVisitor(LinkedList<String> aliases, List<Slicer.Options> options){
+	public BDDVisitor(LinkedList<String> aliases, List<Slicer.Options> options){
 		super();
 		this.aliases = aliases;
 		this.options = options;
+	}
+	
+	/**
+	 * If we are creating a conservative slice, we treat both
+	 * objects on which we call methods as well as arguments
+	 * for method calls as dependencies. This makes the
+	 * assumption that the method will modify the caller
+	 * and the arguments.
+	 * @param node
+	 * @return
+	 */
+	@Override 
+	public boolean visit(MethodInvocation node){
+		if(this.options.contains(Slicer.Options.CONSERVATIVE)){
+			/* The expression part (eg. 'result.setFast(arg1, arg2)' expression = 'result' */
+			Expression expression = node.getExpression();
+			this.visitExpression(expression, new NoBindingsMethodVisitor(this.aliases));
+			if(this.result) return false; 
+			
+			/* The argument (eg. 'result.setFast(arg1, arg2)' arguments = {'arg1', 'arg2'}. */
+			List<Expression> arguments = node.arguments();
+			for(Expression argument : arguments){
+				this.visitExpression(argument, new NoBindingsAssignmentVisitor(this.aliases));
+			}
+		}
+		return false;
 	}
 	
 	/**
@@ -63,7 +89,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 		
 		if(binding == null){
 			if(this.aliases.contains((node.getName().getFullyQualifiedName())))
-				this.result = true;
+				this.result = true;			
 		}
 		else if(binding instanceof IVariableBinding){
 			/* If this variable is in the alias list, then this statement 
@@ -73,7 +99,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 			}
 		}
 		
-		return true;
+		return false;
 	}
 	
 	/**
@@ -96,81 +122,21 @@ public class DataDependencyVisitor extends DependencyVisitor {
 			}
 		}
 		
-		return true;
+		return false;
 	}
 	
 	/**
 	 * This is a data dependency if this is an assignment and the
 	 * variable being assigned is in the right hand side of the
 	 * seed assignment expression.
+	 * 
+	 * We only handle cases where the left hand side of the
+	 * assignment is a SimpleName, FieldAccess or QualifiedName.
 	 */
 	public boolean visit(Assignment node){
 		Expression lhs = node.getLeftHandSide();
-		if(lhs instanceof FieldAccess){
-			/* All we really need from this is the variable binding. */
-			IBinding binding = ((FieldAccess) lhs).resolveFieldBinding();
-			
-			/* Make sure this is a variable.
-			 * If we are just analyzing one source file,
-			 * we won't have binding info... so do our 
-			 * best effort at matching variables. */
-			if(binding == null){
-				NoBindingsVisitor nbv = new NoBindingsVisitor(this.aliases);
-				lhs.accept(nbv);
-				this.result = nbv.result;
-			}
-			else if(binding instanceof IVariableBinding){
-				/* If this variable is in the alias list, then this statement 
-				 * is a data dependency. */
-				if(this.aliases.contains(binding.getKey())){
-					this.result = true;
-				}
-			}
-		}
-		else if(lhs instanceof QualifiedName){
-			/* All we really need from this is the variable binding. */
-			IBinding binding = ((QualifiedName)lhs).resolveBinding();
-			
-			/* Make sure this is a variable.
-			 * If we are just analyzing one source file,
-			 * we won't have binding info... so do our 
-			 * best effort at matching variables. */
-			if(binding == null){
-				NoBindingsVisitor nbv = new NoBindingsVisitor(this.aliases);
-				lhs.accept(nbv);
-				this.result = nbv.result;
-			}
-			else if(binding instanceof IVariableBinding){
-				/* If this variable is in the alias list, then this statement 
-				 * is a data dependency. */
-				if(this.aliases.contains(binding.getKey())){
-					this.result = true;
-				}
-			}
-		}
-		else if(lhs instanceof SimpleName){
-			/* All we really need from this is the variable binding. */
-			IBinding binding = ((SimpleName)lhs).resolveBinding();
-			
-			/* Make sure this is a variable.
-			 * If we are just analyzing one source file,
-			 * we won't have binding info... so do our 
-			 * best effort at matching variables. */
-			if(binding == null){
-				NoBindingsVisitor nbv = new NoBindingsVisitor(this.aliases);
-				lhs.accept(nbv);
-				this.result = nbv.result;
-			}
-			else if(binding instanceof IVariableBinding){
-				/* If this variable is in the alias list, then this statement 
-				 * is a data dependency. */
-				if(this.aliases.contains(binding.getKey())){
-					this.result = true;
-				}
-			}
-		}
-		
-		return true;
+		this.visitExpression(lhs, new NoBindingsAssignmentVisitor(this.aliases));
+		return false;
 	}
 	
 	/**
@@ -180,7 +146,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * be in the slice.
 	 */
 	public boolean visit(IfStatement node){
-		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS)){
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
 			/* Visit the expression part. */
 			node.getExpression().accept(this);
 			/* Don't visit the children. */
@@ -196,7 +162,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * be in the slice.
 	 */
 	public boolean visit(DoStatement node){
-		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS)){
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
 			/* Visit the expression part. */
 			node.getExpression().accept(this);
 			/* Don't visit the children. */
@@ -212,7 +178,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * be in the slice.
 	 */
 	public boolean visit(EnhancedForStatement node){
-		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS)){
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
 			/* Visit the expression part. */
 			node.getExpression().accept(this);
 			/* Don't visit the children. */
@@ -228,7 +194,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * be in the slice.
 	 */
 	public boolean visit(ForStatement node){
-		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS)){
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
 			/* Visit the expression part. */
 			node.getExpression().accept(this);
 			List<Expression> initializers = node.initializers();
@@ -248,7 +214,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * be in the slice.
 	 */
 	public boolean visit(SwitchStatement node){
-		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS)){
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
 			/* Visit the expression part. */
 			node.getExpression().accept(this);
 			/* Don't visit the children. */
@@ -265,7 +231,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * be in the slice.
 	 */
 	public boolean visit(SynchronizedStatement node){
-		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS)){
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
 			/* Visit the expression part. */
 			node.getExpression().accept(this);
 			/* Don't visit the children. */
@@ -281,7 +247,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	 * be in the slice.
 	 */
 	public boolean visit(WhileStatement node){
-		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS)){
+		if(this.options.contains(Slicer.Options.CONTROL_EXPRESSIONS_ONLY)){
 			/* Visit the expression part. */
 			node.getExpression().accept(this);
 			/* Don't visit the children. */
@@ -291,10 +257,78 @@ public class DataDependencyVisitor extends DependencyVisitor {
 	}
 	
 	/**
+	 * Vists an expression and checks for aliases.
+	 * @param node
+	 * @return
+	 */
+	public void visitExpression(Expression node, DependencyVisitor nbv){
+		if(node instanceof FieldAccess){
+			/* All we really need from this is the variable binding. */
+			IBinding binding = ((FieldAccess) node).resolveFieldBinding();
+			
+			/* Make sure this is a variable.
+			 * If we are just analyzing one source file,
+			 * we won't have binding info... so do our 
+			 * best effort at matching variables. */
+			if(binding == null){
+				node.accept(nbv);
+				this.result = nbv.result;
+			}
+			else if(binding instanceof IVariableBinding){
+				/* If this variable is in the alias list, then this statement 
+				 * is a data dependency. */
+				if(this.aliases.contains(binding.getKey())){
+					this.result = true;
+				}
+			}
+		}
+		else if(node instanceof QualifiedName){
+			/* All we really need from this is the variable binding. */
+			IBinding binding = ((QualifiedName)node).resolveBinding();
+			
+			/* Make sure this is a variable.
+			 * If we are just analyzing one source file,
+			 * we won't have binding info... so do our 
+			 * best effort at matching variables. */
+			if(binding == null){
+				node.accept(nbv);
+				this.result = nbv.result;
+			}
+			else if(binding instanceof IVariableBinding){
+				/* If this variable is in the alias list, then this statement 
+				 * is a data dependency. */
+				if(this.aliases.contains(binding.getKey())){
+					this.result = true;
+				}
+			}
+		}
+		else if(node instanceof SimpleName){
+			/* All we really need from this is the variable binding. */
+			IBinding binding = ((SimpleName)node).resolveBinding();
+			
+			/* Make sure this is a variable.
+			 * If we are just analyzing one source file,
+			 * we won't have binding info... so do our 
+			 * best effort at matching variables. */
+			if(binding == null){
+				node.accept(nbv);
+				this.result = nbv.result;
+			}
+			else if(binding instanceof IVariableBinding){
+				/* If this variable is in the alias list, then this statement 
+				 * is a data dependency. */
+				if(this.aliases.contains(binding.getKey())){
+					this.result = true;
+				}
+			}
+		}
+	}
+	
+	/**
 	 * A class to find matching fields/variables in expressions when
 	 * we don't have field/variable bindings.
 	 */
-	private class NoBindingsVisitor extends DependencyVisitor {
+	private class NoBindingsAssignmentVisitor extends DependencyVisitor {
 		
 		/* The list of all possible variables and their aliases at this point in the CFG. */
 		private LinkedList<String> aliases;
@@ -303,7 +337,7 @@ public class DataDependencyVisitor extends DependencyVisitor {
 		 * Create DataDependencyVisitor
 		 * @param 
 		 */
-		public NoBindingsVisitor(LinkedList<String> aliases){
+		public NoBindingsAssignmentVisitor(LinkedList<String> aliases){
 			super();
 			this.aliases = aliases;
 		}
@@ -330,6 +364,58 @@ public class DataDependencyVisitor extends DependencyVisitor {
 					this.result = true;	// We found a match. Set the parent's result to true.
 					return false; // We no longer need to visit the children.
 				}
+			}
+			return true;
+		}
+		
+		/**
+		 * Check if this node is a variable or field name in the alias list.
+		 */
+		public boolean visit(FieldAccess node){
+			if(this.aliases.contains(node.getName())){
+				this.result = true;	// We found a match. Set the parent's result to true.
+				return false; // We no longer need to visit the children.
+			}
+			return true;
+		}
+	}
+	
+	/**
+	 * A class to find matching fields/variables in method expressions when
+	 * we don't have field/variable bindings.
+	 */
+	private class NoBindingsMethodVisitor extends DependencyVisitor {
+		
+		/* The list of all possible variables and their aliases at this point in the CFG. */
+		private LinkedList<String> aliases;
+		
+		/**
+		 * Create DataDependencyVisitor
+		 * @param 
+		 */
+		public NoBindingsMethodVisitor(LinkedList<String> aliases){
+			super();
+			this.aliases = aliases;
+		}
+		
+		/**
+		 * Check if this node is a variable or field name in the alias list.
+		 */
+		public boolean visit(SimpleName node){
+			if(this.aliases.contains(node.getFullyQualifiedName())){
+				this.result = true;	// We found a match. Set the parent's result to true.
+				return false; // We no longer need to visit the children.
+			}
+			return true;
+		}
+		
+		/**
+		 * Check if this node is a variable or field name in the alias list.
+		 */
+		public boolean visit(QualifiedName node){
+			if(this.aliases.contains(node.getFullyQualifiedName())){
+				this.result = true;	// We found a match. Set the parent's result to true.
+				return false; // We no longer need to visit the children.
 			}
 			return true;
 		}

@@ -22,11 +22,11 @@ public class MethodVisitor extends ASTVisitor
 	private int seedLine;
 	private Slicer.Direction direction;
 	private Slicer.Type type;
-	private List<Slicer.Options> options;
+	private Slicer.Options[] options;
 	
 	public List<ASTNode> slice;
 	
-	public MethodVisitor(String methodName, int seedLine, Slicer.Direction direction, Slicer.Type type, List<Slicer.Options> options){
+	public MethodVisitor(String methodName, int seedLine, Slicer.Direction direction, Slicer.Type type, Slicer.Options... options){
 		this.methodName = methodName;
 		this.seedLine = seedLine;
 		this.direction = direction;
