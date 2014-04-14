@@ -27,6 +27,11 @@ import org.eclipse.jdt.core.dom.WhileStatement;
  * to the list of variables that we need to check for. This class is
  * similar to BDDVisitor (except we are adding aliases instead of 
  * checking for them).
+ * 
+  * Strategy:
+ * 	BDD & FDDSeed - Track assignments, declarations, objects of method call and arguments of method call.
+ * 	FDD & BDDSeed - Track all other variable uses
+ * 
  * @author qhanam
  */
 public class FDDSeedVisitor extends ASTVisitor {

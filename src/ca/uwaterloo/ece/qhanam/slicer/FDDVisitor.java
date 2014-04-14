@@ -4,26 +4,31 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.DoStatement;
-import org.eclipse.jdt.core.dom.EnhancedForStatement;
-import org.eclipse.jdt.core.dom.FieldAccess;
-import org.eclipse.jdt.core.dom.ForStatement;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
-import org.eclipse.jdt.core.dom.IfStatement;
-import org.eclipse.jdt.core.dom.QualifiedName;
-import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
-import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.Assignment;
+import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.FieldAccess;
+import org.eclipse.jdt.core.dom.Name;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
+import org.eclipse.jdt.core.dom.DoStatement;
+import org.eclipse.jdt.core.dom.IfStatement;
+import org.eclipse.jdt.core.dom.EnhancedForStatement;
+import org.eclipse.jdt.core.dom.ForStatement;
 import org.eclipse.jdt.core.dom.SwitchStatement;
 import org.eclipse.jdt.core.dom.SynchronizedStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
+import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.QualifiedName;
 
 /**
- * Add any variables or fields that appear in the seed statement
- * to the list of variables that we need to check for.
+ * Checks whether this ASTNode (Statement) contains a data dependency from
+ * the given list.
  * 
  * Strategy:
  * 	BDD & FDDSeed - Track assignments, declarations, objects of method call and arguments of method call.
@@ -31,17 +36,21 @@ import org.eclipse.jdt.core.dom.WhileStatement;
  * 
  * @author qhanam
  */
-public class BDDSeedVisitor extends ASTVisitor {
-	LinkedList<String> seedVariables;
-	List<Slicer.Options> options;
+public class FDDVisitor extends DependencyVisitor {
+	
+	/* The list of all possible variables and their aliases at this point in the CFG. */
+	protected LinkedList<String> aliases;
+	
+	/* The slicer options. */
+	private List<Slicer.Options> options;
 	
 	/**
-	 * Create a SeedVisitor
-	 * @param seedVariables The list that SeedVisitor will fill with the seed variables.
+	 * Create DataDependencyVisitor
+	 * @param 
 	 */
-	public BDDSeedVisitor(LinkedList<String> seedVariables, List<Slicer.Options> options){
+	public FDDVisitor(LinkedList<String> aliases, List<Slicer.Options> options){
 		super();
-		this.seedVariables = seedVariables;
+		this.aliases = aliases;
 		this.options = options;
 	}
 	
@@ -53,12 +62,12 @@ public class BDDSeedVisitor extends ASTVisitor {
 		IBinding binding = node.resolveBinding();
 		
 		if(binding == null){
-			if(!seedVariables.contains(node.getFullyQualifiedName()))
-				seedVariables.add(node.getFullyQualifiedName());
+			if(this.aliases.contains(node.getFullyQualifiedName()))
+				this.result = true;
 		}
 		else if(binding instanceof IVariableBinding){
-			if(!seedVariables.contains(binding.getKey()))
-				seedVariables.add(binding.getKey());
+			if(this.aliases.contains(binding.getKey()))
+				this.result = true;
 		}
 		
 		return false;
@@ -72,12 +81,12 @@ public class BDDSeedVisitor extends ASTVisitor {
 		IBinding binding = node.resolveFieldBinding();
 		
 		if(binding == null){
-			if(!seedVariables.contains(node.getName().toString()))
-				seedVariables.add(node.getName().toString());
+			if(this.aliases.contains(node.getName().toString()))
+				return true;
 		}
 		else if(binding instanceof IVariableBinding){
-			if(!seedVariables.contains(binding.getKey()))
-				seedVariables.add(binding.getKey());
+			if(this.aliases.contains(binding.getKey()))
+				return true;
 		}
 		
 		return false;
@@ -93,12 +102,12 @@ public class BDDSeedVisitor extends ASTVisitor {
 		/* Since we already intercept method calls, we can be sure
 		 * that this isn't part of a method call. */
 		if(binding == null){
-			if(!seedVariables.contains(node.getFullyQualifiedName()))
-				seedVariables.add(node.getFullyQualifiedName());
+			if(this.aliases.contains(node.getFullyQualifiedName()))
+				return true;
 		}
 		else if(binding instanceof IVariableBinding){
-			if(!seedVariables.contains(binding.getKey()))
-				seedVariables.add(binding.getKey());
+			if(this.aliases.contains(binding.getKey()))
+				return true;
 		}
 		
 		return false;
@@ -190,6 +199,7 @@ public class BDDSeedVisitor extends ASTVisitor {
 		/* Don't visit the children. */
 		return false;
 	}
+	
 
 	/**
 	 * We want to track the variables from the expression only.
