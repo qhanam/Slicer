@@ -41,28 +41,33 @@ import edu.cmu.cs.crystal.cfg.eclipse.EclipseCFG;
 import edu.cmu.cs.crystal.cfg.ICFGNode;
 import edu.cmu.cs.crystal.cfg.ICFGEdge;
 
-public class CSlicer extends AbstractCrystalMethodAnalysis
+/**
+ * This is a sample use of the slicer as a part of the Crystal Eclipse plugin framework.
+ * @author qhanam
+ *
+ */
+public class IntraProcSlicer extends AbstractCrystalMethodAnalysis
 {
-	private static final int SEED_LINE = 406;
+	private static final int SEED_LINE = 418;
 	private static final String METHOD = "hashCode";
 	private static final Slicer.Direction DIRECTION = Slicer.Direction.BACKWARDS;
-	private static final Slicer.Type TYPE = Slicer.Type.CONTROL;
+	private static final Slicer.Type TYPE = Slicer.Type.DATA;
 	private Slicer.Options[] options;
 	
-	public CSlicer() { 
+	public IntraProcSlicer() { 
 		this.options = new Slicer.Options[]{Slicer.Options.CONTROL_EXPRESSIONS_ONLY};
 	}
 	
 	@Override
 	public String getName() {
-		return "CSlicer";
+		return "IntraProcSlicer";
 	}
 	
 	@Override
 	public void analyzeMethod(MethodDeclaration d) {
 		/* Check that we are analyzing the correct method. */
 		if(d.getName().toString().equals(METHOD)){
-			System.out.println("Starting Control Analysis");
+			System.out.println("Generating intra-procedural slice...");
 			System.out.flush();
 			
 			Slicer slicer = new Slicer(DIRECTION, TYPE, this.options);
@@ -74,14 +79,14 @@ public class CSlicer extends AbstractCrystalMethodAnalysis
 				System.out.println(e.getMessage());
 				return;
 			}
-		
+			
 			/* Print slice statements. */
 			System.out.println("\nNodes in slice:");
 			for(ASTNode node : statements){
 				System.out.print(Slicer.getLineNumber(node) + ": " + node.toString());
 			}
 			
-			System.out.println("Finished Control Analysis");	
+			System.out.println("Finished generating intra-procedural slice.");	
 			System.out.flush();
 		}
 	}
