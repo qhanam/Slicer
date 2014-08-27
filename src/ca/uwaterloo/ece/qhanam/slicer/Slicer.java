@@ -43,7 +43,7 @@ public class Slicer
 	private LinkedList<ASTNode> statements;
 	
 	/**
-	 * Creates a slicer instance. See ca.uwaterloo.ece.qhanam.slicer.plugin.CSlicer for sample usage.
+	 * Creates a slicer instance. See ca.uwaterloo.ece.qhanam.slicer.plugin.IntraProcSlicer for sample usage.
 	 * @param direction FORWARDS, BACKWARDS or BOTH
 	 * @param type The type of dependencies to track (CONTROL or DATA). Data dependencies subsume control dependencies.
 	 */
@@ -142,6 +142,8 @@ public class Slicer
 			{
 				if(this.type == Slicer.Type.CONTROL){
 					if(!this.options.contains(Slicer.Options.OMIT_SEED) || Slicer.getLineNumber(statement) != seedLine){
+						/* TODO: We might need to specifically handle SwitchCase statements, since some of them aren't in the CFG. 
+						 * 		 Because of Data Dependencies, we can't change this in edu.cmu.cs.crystal.cfg.eclipse.EclipseCFG. */
 						DependencyVisitor cdv;
 						if(this.direction == Slicer.Direction.BACKWARDS) {
 							cdv = new BCDVisitor(this.options, seed);

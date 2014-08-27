@@ -1,9 +1,6 @@
 package ca.uwaterloo.ece.qhanam.slicer.test;
 
 import java.util.List;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;

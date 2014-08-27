@@ -36,32 +36,37 @@ public class TestBCDSlicer extends TestSlicer {
 	protected Slicer.Type getType(){ return Slicer.Type.CONTROL; }
 	
 	@Test
-	public void testDataDeps(){
-		runTest("test_files/Test1.java", "drawLine", 7, new int[]{6}, this.BCD_OPTIONS1);
+	public void testStatementCaseConditionals(){
+		runTest("test_files/Test3.java", "eventListener", 9, new int[]{8,7,5,4}, this.BCD_OPTIONS1);
 	}
 	
-	@Test
-	public void testControlDeps(){
-		runTest("test_files/GC.java", "drawString", 2112, new int[]{2055,2059}, this.BCD_OPTIONS1);
-	}
-	
-	@Test
-	public void testIfWhileNestedConditionals(){
-		runTest("test_files/Test2.java", "getLaunchConfigurations", 11, new int[]{10,6}, this.BCD_OPTIONS1);
-	}
-	
-	@Test
-	public void testWhileLoopSeed(){
-		runTest("test_files/Test2.java", "getLaunchConfigurations", 6, new int[]{}, this.BCD_OPTIONS1);
-	}
-	
-	@Test
-	public void testNoExpressionMethod(){
-		runTest("test_files/drawString-1.java", "drawString", 10, new int[]{9,6}, this.BCD_OPTIONS1);
-	}
-	
-	@Test
-	public void testAdditionAssignment(){
-		runTest("test_files/Scrollable.java", "computeTrim", 7, new int[]{}, this.BCD_OPTIONS1);
-	}
+//	@Test
+//	public void testDataDeps(){
+//		runTest("test_files/Test1.java", "drawLine", 7, new int[]{6}, this.BCD_OPTIONS1);
+//	}
+//	
+//	@Test
+//	public void testControlDeps(){
+//		runTest("test_files/GC.java", "drawString", 2112, new int[]{2055,2059}, this.BCD_OPTIONS1);
+//	}
+//	
+//	@Test
+//	public void testIfWhileNestedConditionals(){
+//		runTest("test_files/Test2.java", "getLaunchConfigurations", 11, new int[]{10,6}, this.BCD_OPTIONS1);
+//	}
+//	
+//	@Test
+//	public void testWhileLoopSeed(){
+//		runTest("test_files/Test2.java", "getLaunchConfigurations", 6, new int[]{}, this.BCD_OPTIONS1);
+//	}
+//	
+//	@Test
+//	public void testNoExpressionMethod(){
+//		runTest("test_files/drawString-1.java", "drawString", 10, new int[]{9,6}, this.BCD_OPTIONS1);
+//	}
+//	
+//	@Test
+//	public void testAdditionAssignment(){
+//		runTest("test_files/Scrollable.java", "computeTrim", 7, new int[]{}, this.BCD_OPTIONS1);
+//	}
 }

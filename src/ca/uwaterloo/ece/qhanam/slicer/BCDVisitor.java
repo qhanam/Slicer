@@ -1,32 +1,8 @@
 package ca.uwaterloo.ece.qhanam.slicer;
 
-import java.util.LinkedList;
 import java.util.List;
 
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IVariableBinding;
-import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.Assignment;
-import org.eclipse.jdt.core.dom.Expression;
-import org.eclipse.jdt.core.dom.FieldAccess;
-import org.eclipse.jdt.core.dom.Name;
-import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
-import org.eclipse.jdt.core.dom.VariableDeclaration;
-import org.eclipse.jdt.core.dom.DoStatement;
-import org.eclipse.jdt.core.dom.IfStatement;
-import org.eclipse.jdt.core.dom.EnhancedForStatement;
-import org.eclipse.jdt.core.dom.ForStatement;
-import org.eclipse.jdt.core.dom.SwitchStatement;
-import org.eclipse.jdt.core.dom.SynchronizedStatement;
-import org.eclipse.jdt.core.dom.WhileStatement;
-import org.eclipse.jdt.core.dom.Block;
-import org.eclipse.jdt.core.dom.QualifiedName;
-import org.eclipse.jdt.core.dom.ReturnStatement;
+import org.eclipse.jdt.core.dom.*;
 
 /**
  * Checks whether this ASTNode (Statement) contains a data dependency from
@@ -49,6 +25,15 @@ public class BCDVisitor extends DependencyVisitor {
 		super();
 		this.options = options;
 		this.seed = seed;
+	}
+
+	/**
+	 * Check to see if the seed statement is contained within the body of 
+	 * this conditional statement.
+	 */
+	public boolean visit(SwitchCase node){
+		this.isControlDependency(node.getParent());
+		return false;
 	}
 	
 	/**
@@ -102,6 +87,10 @@ public class BCDVisitor extends DependencyVisitor {
 	 */
 	public boolean visit(SwitchStatement node){
 		this.isControlDependency(node);
+//		List<Statement> ordered = ((SwitchStatement)node.getParent()).statements();
+//		for(Statement s : ordered){
+//			System.out.println(s.toString());
+//		}
 		return false;
 	}
 	

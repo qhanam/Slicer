@@ -57,7 +57,7 @@ public abstract class TestSlicer extends TestCase {
 	}
 	
 	/**
-	 * Generate a data dependency slice.
+	 * Generate a data/control dependency slice.
 	 * @param path
 	 * @param method
 	 * @param seedLine
