@@ -106,7 +106,7 @@ public class BCDVisitor extends DependencyVisitor {
              * statement list and continue.
              */
             Queue<Statement> cache = new LinkedList<Statement>();
-            List<Statement> ordered = ((SwitchStatement)node.getParent()).statements();
+            List<Statement> ordered = node.statements();
             for(Statement s : ordered){
                 if(s instanceof SwitchCase){
                     /* This could be a control dependency. Add it to the cache. */

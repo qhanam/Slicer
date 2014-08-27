@@ -158,6 +158,9 @@ public class Slicer
 						
 						/* TODO: We should store a list of statements in the visitor so we don't have to hack SwitchCase statements. */
 						if(cdv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
+						for(Statement s : cdv.associatedDependencies){
+							statementPairs.put(new Integer(s.getStartPosition()), s);
+						}
 					}
 				}
 				else if(this.type == Slicer.Type.DATA){
