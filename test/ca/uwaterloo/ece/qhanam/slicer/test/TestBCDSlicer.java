@@ -28,6 +28,9 @@ public class TestBCDSlicer extends TestSlicer {
 	
 	private final Slicer.Options[] BCD_OPTIONS1 = new Slicer.Options[]{
 			Slicer.Options.OMIT_SEED};
+
+	private final Slicer.Options[] BCD_OPTIONS2 = new Slicer.Options[]{
+			Slicer.Options.OMIT_SEED, Slicer.Options.SWITCH_AS_IF};
 	
 	@Override
 	protected Slicer.Direction getDirection(){ return Slicer.Direction.BACKWARDS; }
@@ -37,7 +40,12 @@ public class TestBCDSlicer extends TestSlicer {
 	
 	@Test
 	public void testStatementCaseConditionals(){
-		runTest("test_files/Test3.java", "eventListener", 9, new int[]{8,7,5,4}, this.BCD_OPTIONS1);
+		runTest("test_files/Test3.java", "eventListener", 9, new int[]{8,7,4}, this.BCD_OPTIONS1);
+	}
+	
+	@Test
+	public void testSwitchAsIfElse(){
+		runTest("test_files/Test3.java", "eventListener", 9, new int[]{8,7,5,4}, this.BCD_OPTIONS2);
 	}
 	
 //	@Test

@@ -1,6 +1,8 @@
 package ca.uwaterloo.ece.qhanam.slicer;
 
 import java.util.List;
+import java.util.LinkedList;
+import java.util.Queue;
 
 import org.eclipse.jdt.core.dom.*;
 
@@ -32,8 +34,13 @@ public class BCDVisitor extends DependencyVisitor {
 	 * this conditional statement.
 	 */
 	public boolean visit(SwitchCase node){
-		this.isControlDependency(node.getParent());
-		return false;
+		if(this.options.contains(Slicer.Options.SWITCH_AS_IF)) {
+			return true;
+		}
+		else{
+            this.isControlDependency(node.getParent());
+            return false;
+		}
 	}
 	
 	/**
@@ -84,14 +91,39 @@ public class BCDVisitor extends DependencyVisitor {
 	/**
 	 * Check to see if the seed statement is contained within the body of 
 	 * this conditional statement.
+	 * 
+	 * Because this is a Switch statement, we also have to investigate the 
+	 * case statements. We treat them like an if/else statement block.
 	 */
 	public boolean visit(SwitchStatement node){
 		this.isControlDependency(node);
-//		List<Statement> ordered = ((SwitchStatement)node.getParent()).statements();
-//		for(Statement s : ordered){
-//			System.out.println(s.toString());
-//		}
-		return false;
+
+		/* Get SwitchCase statement dependencies. */
+		if(this.options.contains(Slicer.Options.SWITCH_AS_IF)) {
+            /* Strategy: Use a list to keep track of all SwitchCase statements. When we
+             * get to the seed statement, flush the list to the related statement list 
+             * and return. If we get to a return statement, flush the list to the related 
+             * statement list and continue.
+             */
+            Queue<Statement> cache = new LinkedList<Statement>();
+            List<Statement> ordered = ((SwitchStatement)node.getParent()).statements();
+            for(Statement s : ordered){
+                if(s instanceof SwitchCase){
+                    /* This could be a control dependency. Add it to the cache. */
+                    cache.add(s);
+                }
+                else if(s.equals(this.seed) || s instanceof ReturnStatement){
+                    /* Flush the cache. */
+                    while(cache.peek() != null){
+                        this.associatedDependencies.add(cache.remove());
+                    }
+                    /* We are done if this is the seed statement. */
+                    if(s.equals(this.seed)) return false;
+                }
+                System.out.println(s.toString());
+            }
+		}
+        return false;
 	}
 	
 	/**

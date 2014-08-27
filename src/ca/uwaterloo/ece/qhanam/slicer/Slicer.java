@@ -156,6 +156,7 @@ public class Slicer
 						}
 						else throw new Exception("Slicer only supports FORWARDS or BACKWARDS directions.");
 						
+						/* TODO: We should store a list of statements in the visitor so we don't have to hack SwitchCase statements. */
 						if(cdv.result) statementPairs.put(new Integer(statement.getStartPosition()), statement);
 					}
 				}
@@ -378,6 +379,24 @@ public class Slicer
 		/**
 		 * Perform a restrictive slice (ie. do not include method calls in data dependencies)
 		 */
-		RESTRICTIVE
+		RESTRICTIVE,
+		
+		/**
+		 * Treat switch statements as if/else statements.
+		 * Example:
+		 * 1	switch(n){
+		 * 2		case 1:
+		 * 3			break;
+		 * 4		case 2:
+		 * 5		case 3:
+		 * 6			i++;
+		 * 7	 	case 4:
+		 * 8	}
+		 * Seed statement = line 6.
+		 * 
+		 * With this option, control dependencies = lines [1,2,4,5].
+		 * Without this option, control dependencies = lines [1,4,5].
+		 */
+		SWITCH_AS_IF
 	}
 }
